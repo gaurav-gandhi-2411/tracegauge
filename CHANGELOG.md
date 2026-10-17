@@ -21,7 +21,7 @@ still installs, with pip's yanked-release warning. Checked against the real inde
 
 ## [Unreleased]
 
-## [0.16.0] - unreleased — renamed to tracegauge (import package, command, environment variables), relicensed Apache-2.0, cache-churn detector
+## [0.16.0] - 2026-10-17 — renamed to tracegauge (import package, command, environment variables), relicensed Apache-2.0, cache-churn detector
 
 Measurements and migration detail: [docs/releases/0.16.0.md](docs/releases/0.16.0.md). The scoring math and the
 bundled data are unchanged. The waste detectors are byte-identical to 0.15.0 (`git diff -M --numstat v0.15.0 HEAD --
