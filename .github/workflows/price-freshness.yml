@@ -46,6 +46,10 @@ concurrency:
   group: ${{ github.workflow }}
   cancel-in-progress: true
 
+# Least privilege: the job only checks out the repository and runs read-only checks.
+permissions:
+  contents: read
+
 jobs:
   price-freshness:
     runs-on: ubuntu-latest

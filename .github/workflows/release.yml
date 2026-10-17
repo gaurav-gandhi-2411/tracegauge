@@ -33,6 +33,11 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
+# Least privilege by default: a job that needs more (gate-canary: actions read; publish: OIDC)
+# declares its own block, which replaces this one.
+permissions:
+  contents: read
+
 jobs:
   preflight-version:
     name: Refuse to release when the tag and the version sources disagree
