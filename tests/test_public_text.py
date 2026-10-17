@@ -17,9 +17,29 @@ A claim in public text has to be reproducible from the repo, or be stated as an 
 measurement; a path on the maintainer's disk or the name of an internal report is neither."""
 
 import re
+import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+
+
+def _tracked_only(paths: list[Path]) -> list[Path]:
+    """Keep only the files git tracks, so ignored local data (for example SWE-chat-derived files
+    kept out of the repository) is never scanned: a clone and a working copy see the same files.
+    Without a usable git checkout (an unpacked sdist) every path is kept, never none."""
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(ROOT), "ls-files", "-z"],
+            capture_output=True,
+            check=True,
+            timeout=60,
+        ).stdout
+    except (OSError, subprocess.SubprocessError):
+        return paths
+    tracked = {ROOT / name for name in out.decode("utf-8").split("\0") if name}
+    return [p for p in paths if p in tracked] if tracked else paths
+
+
 # Built from pieces so this file does not trip its own scan (it lives under tests/, which is not
 # scanned, but a grep over the repo for the markers should find the rule, not the data).
 FORBIDDEN = ("D:" + "\\", "W1" + "A", "W1" + "B", "q-" + "step")
@@ -101,7 +121,7 @@ def _private_reference_files() -> list[Path]:
         files += sorted(
             p for p in (ROOT / d).rglob("*") if p.is_file() and p.suffix in {".md", ".txt"}
         )
-    return files
+    return _tracked_only(files)
 
 
 def test_audit_design_research_and_config_notes_name_no_private_reference() -> None:
@@ -177,7 +197,7 @@ def _public_files() -> list[Path]:
     files += sorted(
         p for p in (ROOT / "docs").rglob("*") if p.is_file() and p.suffix in {".md", ".txt"}
     )
-    return files
+    return _tracked_only(files)
 
 
 def _source_files() -> list[Path]:
@@ -191,7 +211,7 @@ def _source_files() -> list[Path]:
             and "__pycache__" not in p.parts
             and "node_modules" not in p.parts
         )
-    return files
+    return _tracked_only(files)
 
 
 def test_public_text_has_no_private_paths_or_internal_jargon() -> None:
@@ -248,7 +268,7 @@ def test_tests_and_manifest_name_no_other_project() -> None:
     files += [p for p in sorted((ROOT / "data").glob("*.jsonl")) if p.is_file()]
     hits = [
         f"{p.relative_to(ROOT).as_posix()}:{n}"
-        for p in files
+        for p in _tracked_only(files)
         for n, line in enumerate(p.read_text(encoding="utf-8", errors="replace").splitlines(), 1)
         if OTHER_PROJECT_NAMES.search(line)
     ]
@@ -284,3 +304,10 @@ def test_markers_do_fire_on_the_labels_they_exist_for() -> None:
     for name, text in samples.items():
         assert SOURCE_MARKERS[name].search(text), (name, text)
     assert not SOURCE_MARKERS["ticket code"].search("licence CC0 1.0")
+
+
+def test_scans_skip_untracked_local_files_but_keep_tracked_ones() -> None:
+    ignored = ROOT / "data" / "swechat_noncc_adapted.jsonl"  # .gitignore'd, local-only
+    tracked = ROOT / "README.md"
+    assert tracked in _tracked_only([tracked, ignored])
+    assert ignored not in _tracked_only([tracked, ignored])
