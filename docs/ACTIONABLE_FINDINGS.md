@@ -30,7 +30,7 @@ the local population; the commands are `tracegauge score <path> --no-judge --jso
 
 | Population | Sessions (priced) | T = $0.10 | **T = $0.50** | T = $1 | T = $5 |
 |---|---|---|---|---|---|
-| One developer's local Claude Code sessions | 50 | 64.0% | **64.0%** (32 of 50; Wilson 50.1 to 75.9) | 58.0% | 0.0% |
+| One developer's local Claude Code sessions | 50 (priced, 3 of them with no usage) | 64.0% | **64.0%** (32 of 50; Wilson 50.1 to 75.9) | 58.0% | 0.0% |
 | SWE-chat Claude Code sessions (public data, 337 developer clusters) | 1,051 | 35.8% | **18.7%** (Wilson 16.5 to 21.2; developer-cluster bootstrap 13.9 to 27.6) | 7.2% | 0.5% |
 
 Read these with the caveats:
@@ -43,7 +43,7 @@ Read these with the caveats:
   narrow. Use the bootstrap interval, not the Wilson one, for that row. Leaving out any one cluster keeps the
   headline between 18.0 and 22.6%.
 * **Almost all of it is cache churn.** At T = $0.50 the one developer's 32 qualifying sessions all qualify through
-  churn (157 churn events of at least $0.50, no waste event); in SWE-chat 197 sessions qualify, all through churn
+  churn (at least 157 churn events of $0.50 or more, no waste event; the output lists only the ten largest events per session, so this is a lower bound); in SWE-chat 197 sessions qualify, all through churn
   (2 of them also have a waste event). The waste detectors are deterministic and conservative; in these sessions
   they rarely reach $0.50. A waste finding of an identical-read pair (RR-A) is priced at $0 by definition.
 * **"Actionable" is not "avoidable".** The count includes churn the tool itself labels not avoidable by a setting
@@ -66,8 +66,9 @@ temperature 0.
 * **Judges:** Claude through an unmodified `claude -p`; `openai/gpt-oss-120b` on a free tier; local qwen3:8b with
   thinking on. Each had to label at least 90% of 40 seeded, unambiguous cards correctly before it was used: all
   three scored 40/40 (qwen3:8b with thinking off scored 30/40 on the same cards and was not used in that mode).
-* **Sample:** 160 events, 40 per cause, at most 2 per session, drawn at random (seed 42) from the 1,926 events
-  of the two populations above (131 from SWE-chat, 29 from the local sessions).
+* **Sample:** 160 events, 40 per cause, at most 2 per session within a cause (so up to 4 per session across the
+  four causes; 100 sessions contribute one event, 14 two, 8 three and 2 four), drawn at random (seed 42) from the
+  1,926 events of the two populations above (131 from SWE-chat, 29 from the local sessions).
 
 | Cause the tool named | Events | Majority of the judges agreed | Wilson 95% |
 |---|---|---|---|
@@ -86,7 +87,7 @@ What this shows: the causes the tool names follow from the facts it displays, as
 tool's label read them. What it does not show: that the physical cause is right. The cards hold the same facts
 the rules use, so agreement is close to a consistency check of the rules; `UNEXPLAINED` means the card holds no
 mechanism, and the judges found none either. On the 6 events where two mechanisms apply at once the majority
-agreed with the tool on 4. The intervals treat events as independent although at most 2 come from a session.
+agreed with the tool on 4. The intervals treat events as independent although up to 4 come from one session.
 This is LLM-consensus agreement, not ground truth, and the tool's cause remains "a rule on transcript markers
 and timestamps, not a verified fact".
 

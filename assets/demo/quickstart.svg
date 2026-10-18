@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 679 363" width="679" height="363" role="img" aria-labelledby="t d">
 <title id="t">tracegauge quickstart</title>
-<desc id="d">Animated terminal recording of tracegauge quickstart on the bundled synthetic sample session: token economy verdict, one deterministic waste finding and the cost breakdown. About 8 seconds, plays once.</desc>
+<desc id="d">Animated terminal recording of tracegauge quickstart on the bundled synthetic sample session: token economy reading (building, 0 of 10 own sessions) with a context line, one deterministic waste finding and the cost breakdown. About 8 seconds, plays once.</desc>
 <style>
 text{font-family:ui-monospace,Menlo,Consolas,'DejaVu Sans Mono',monospace;font-size:13px;white-space:pre;fill:#DCE3F5}
 .cmd{fill:#FF7A9C}.hd{fill:#8E99B8}

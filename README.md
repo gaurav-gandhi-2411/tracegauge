@@ -15,7 +15,7 @@ tracegauge reads your Claude Code session transcripts on your own machine and sh
 [![PyPI](https://img.shields.io/pypi/v/tracegauge.svg)](https://pypi.org/project/tracegauge/)
 
 <p align="center">
-  <img alt="Terminal recording of tracegauge quickstart on the bundled synthetic sample session: a token economy verdict, one deterministic waste finding and the cost breakdown" src="https://github.com/gaurav-gandhi-2411/tracegauge/raw/master/assets/demo/quickstart.svg">
+  <img alt="Terminal recording of tracegauge quickstart on the bundled synthetic sample session: the token economy reading (building, with a context line), one deterministic waste finding and the cost breakdown" src="https://github.com/gaurav-gandhi-2411/tracegauge/raw/master/assets/demo/quickstart.svg">
 </p>
 
 ## Install and try it
@@ -30,7 +30,7 @@ tracegauge score        # scores your most recent Claude Code session
 
 Real output of this version on data in the repository. Lines are selected from the report, never edited. [`scripts/gen_readme_demo.py`](https://github.com/gaurav-gandhi-2411/tracegauge/blob/master/scripts/gen_readme_demo.py) regenerates both blocks and the recording above, and `tests/test_readme_demo.py` fails when this README or the recording drifts from what the command prints.
 
-`tracegauge quickstart` on the bundled sample, a synthetic session shipped in the package. It gets a token verdict against the research-recon band, one deterministic waste finding with its proof turns, and the cost split by where the money went:
+`tracegauge quickstart` on the bundled sample, a synthetic session shipped in the package. Its token reading says `building (0/10)`, because a verdict needs 10 of your own sessions, and adds a labelled context line from other developers' sessions; it also gets one deterministic waste finding with its proof turns, and the cost split by where the money went:
 
 ```text
 tracegauge quickstart -- no local judge, no network call, no files of yours read.
