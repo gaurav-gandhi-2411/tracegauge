@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from tracegauge._env import env_value
-from tracegauge.score import ThreeAxisResult
+from tracegauge.score import ThreeAxisResult, build_subagents_summary
 from tracegauge.web.cost_format import cost_is_known
 
 if TYPE_CHECKING:
@@ -246,6 +246,9 @@ def open_db(path: Path | str | None = None) -> sqlite3.Connection:
         "subagent_tokens": "ALTER TABLE sessions ADD COLUMN subagent_tokens INTEGER",
         "subagent_cost_usd": "ALTER TABLE sessions ADD COLUMN subagent_cost_usd REAL",
         "subagent_count": "ALTER TABLE sessions ADD COLUMN subagent_count INTEGER",
+        # JSON list of per-type rows (tracegauge.score.build_subagents_summary). NULL = not
+        # recorded (scored before 0.17.0), distinct from [] = scored, no subagents.
+        "subagent_by_type_json": "ALTER TABLE sessions ADD COLUMN subagent_by_type_json TEXT",
     }
     for col_name, alter_sql in subagent_cols.items():
         if col_name not in existing_cols:
@@ -296,6 +299,17 @@ def needs_scoring(conn: sqlite3.Connection, session_id: str, current_hash: str) 
     if row is None:
         return True
     return row["source_hash"] != current_hash
+
+
+def subagent_by_type_json(result: ThreeAxisResult) -> str | None:
+    """JSON for the subagent_by_type_json column, or None ("not recorded").
+
+    None when the result carries no per-type summary or no cost was computed (the list would
+    then falsely read "scored, no subagents"); "[]" when a priced session had no subagents.
+    """
+    if not result.subagents or result.session_cost_usd is None:
+        return None
+    return json.dumps(result.subagents["by_type"])
 
 
 def upsert_session(
@@ -350,7 +364,7 @@ def upsert_session(
                 session_cost_usd, cost_approximate, cost_domain_of_validity,
                 context_resend_pct, context_growth_pct, output_pct, waste_pct,
                 cost_unpriced_models, edit_operations,
-                subagent_tokens, subagent_cost_usd, subagent_count
+                subagent_tokens, subagent_cost_usd, subagent_count, subagent_by_type_json
             ) VALUES (
                 ?, ?,
                 ?, ?, ?, ?, ?,
@@ -364,7 +378,7 @@ def upsert_session(
                 ?, ?, ?,
                 ?, ?, ?, ?,
                 ?, ?,
-                ?, ?, ?
+                ?, ?, ?, ?
             )
             """,
             (
@@ -406,6 +420,7 @@ def upsert_session(
                 result.subagent_tokens,
                 result.subagent_cost_usd,
                 result.subagent_count,
+                subagent_by_type_json(result),
             ),
         )
 
@@ -428,7 +443,8 @@ def upsert_session(
                 session_cost_usd = ?, cost_approximate = ?, cost_domain_of_validity = ?,
                 context_resend_pct = ?, context_growth_pct = ?, output_pct = ?, waste_pct = ?,
                 cost_unpriced_models = ?, edit_operations = ?,
-                subagent_tokens = ?, subagent_cost_usd = ?, subagent_count = ?
+                subagent_tokens = ?, subagent_cost_usd = ?, subagent_count = ?,
+                subagent_by_type_json = ?
             WHERE session_id = ?
             """,
             (
@@ -469,6 +485,7 @@ def upsert_session(
                 result.subagent_tokens,
                 result.subagent_cost_usd,
                 result.subagent_count,
+                subagent_by_type_json(result),
                 result.session_id,
             ),
         )
@@ -490,7 +507,8 @@ def upsert_session(
                 session_cost_usd = ?, cost_approximate = ?, cost_domain_of_validity = ?,
                 context_resend_pct = ?, context_growth_pct = ?, output_pct = ?, waste_pct = ?,
                 cost_unpriced_models = ?, edit_operations = ?,
-                subagent_tokens = ?, subagent_cost_usd = ?, subagent_count = ?
+                subagent_tokens = ?, subagent_cost_usd = ?, subagent_count = ?,
+                subagent_by_type_json = ?
             WHERE session_id = ?
             """,
             (
@@ -526,6 +544,7 @@ def upsert_session(
                 result.subagent_tokens,
                 result.subagent_cost_usd,
                 result.subagent_count,
+                subagent_by_type_json(result),
                 result.session_id,
             ),
         )
@@ -549,7 +568,8 @@ def upsert_session(
                 session_cost_usd = ?, cost_approximate = ?, cost_domain_of_validity = ?,
                 context_resend_pct = ?, context_growth_pct = ?, output_pct = ?, waste_pct = ?,
                 cost_unpriced_models = ?, edit_operations = ?,
-                subagent_tokens = ?, subagent_cost_usd = ?, subagent_count = ?
+                subagent_tokens = ?, subagent_cost_usd = ?, subagent_count = ?,
+                subagent_by_type_json = ?
             WHERE session_id = ?
             """,
             (
@@ -590,6 +610,7 @@ def upsert_session(
                 result.subagent_tokens,
                 result.subagent_cost_usd,
                 result.subagent_count,
+                subagent_by_type_json(result),
                 result.session_id,
             ),
         )
@@ -720,7 +741,7 @@ def _refresh_usage_columns(
         "token_domain_of_validity = ?, baseline_source = ?, "
         "session_cost_usd = ?, cost_approximate = ?, cost_domain_of_validity = ?, "
         "cost_unpriced_models = ?, subagent_tokens = ?, subagent_cost_usd = ?, "
-        "subagent_count = ?, context_resend_pct = ?, context_growth_pct = ?, output_pct = ?, "
+        "subagent_count = ?, subagent_by_type_json = ?, context_resend_pct = ?, context_growth_pct = ?, output_pct = ?, "
         "waste_pct = ?, adapter_version = ?, cost_version = ?, duplicate_usage_records = ?, "
         "dominant_model = ? WHERE session_id = ?",
         (
@@ -741,6 +762,7 @@ def _refresh_usage_columns(
             r.subagent_tokens,
             r.subagent_cost_usd,
             r.subagent_count,
+            subagent_by_type_json(r),
             resend,
             growth,
             out_pct,
@@ -962,7 +984,7 @@ def backfill_cost(
             conn.execute(
                 "UPDATE sessions SET "
                 "  session_cost_usd = ?, cost_approximate = ?, cost_domain_of_validity = ?, "
-                "  cost_unpriced_models = ?, subagent_cost_usd = ? "
+                "  cost_unpriced_models = ?, subagent_cost_usd = ?, subagent_by_type_json = ? "
                 "WHERE session_id = ?",
                 (
                     session_cost.total_usd,
@@ -970,6 +992,7 @@ def backfill_cost(
                     session_cost.domain_of_validity,
                     ",".join(session_cost.unpriced_models) or None,
                     session_cost.subagent_usd,
+                    json.dumps(build_subagents_summary(session_cost)["by_type"]),
                     session_id,
                 ),
             )

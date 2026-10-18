@@ -42,6 +42,7 @@ COST_KEYS = {
     "legacy_rows_excluded",
     "legacy",
     "by_project",
+    "subagents",
     "roi",
 }
 COST_PROJECT_KEYS = {
