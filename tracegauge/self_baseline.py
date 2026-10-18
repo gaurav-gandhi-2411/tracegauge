@@ -491,6 +491,10 @@ def load_or_compute(
     if cache_path is None:
         cache_path = db_path.parent / "self_baseline_cache.json"
     cache_path = Path(cache_path)
+    # The fallback changes what a still-building type holds, so it is part of the cache key: a
+    # cache written before the callers asked for it (every task type "building") must not be
+    # served once they do.
+    fallback_key = int(bool(kwargs.get("corpus_fallback", False)))
 
     if not force_recompute and cache_path.exists():
         try:
@@ -500,6 +504,7 @@ def load_or_compute(
             conn = sqlite3.connect(db_path)
             conn.row_factory = sqlite3.Row
             current_fp = _fingerprint(conn, b2_baselines)
+            current_fp["_corpus_fallback"] = fallback_key
             conn.close()
 
             if stored_fp == current_fp:
@@ -512,6 +517,7 @@ def load_or_compute(
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     fp = _fingerprint(conn, b2_baselines)
+    fp["_corpus_fallback"] = fallback_key
     conn.close()
 
     payload = _state_to_json(state)
@@ -524,11 +530,23 @@ def load_or_compute(
     return state
 
 
+def load_for_scoring(db_path: Path | str, b2_baselines: dict, **kwargs) -> SelfBaselineState:
+    """The state every scoring caller (watcher, dashboard) uses.
+
+    A task type whose own baseline is still building is scored against the bundled reference band
+    (``source == 'corpus'``) instead of showing no verdict, which is what the docs promise ("falls
+    back to the bundled reference corpus until your self-baseline activates"). A type the bundled
+    corpus has no band for stays ``building`` and its token verdict stays ``unavailable``.
+    """
+    return load_or_compute(db_path, b2_baselines, corpus_fallback=True, **kwargs)
+
+
 __all__ = [
     "MIN_MEANINGFUL_TURNS",
     "TypeBaseline",
     "SelfBaselineState",
     "compute_baseline_cost_band",
     "compute_self_baselines",
+    "load_for_scoring",
     "load_or_compute",
 ]
