@@ -141,6 +141,14 @@ meta file is missing or unreadable). `usd` of a type is `null` when none of its 
 real-token units, as is each type's `real_tokens`; the new `tokens` fields are billed tokens (they include
 every re-read of the cached context, so they are much larger).
 
+`context` (additive, `schema_version` stays 1) is `null`, or an object with the fixed keys `unit`
+(`real_tokens_per_turn`), `value` (this session's tokens per turn), `percentile` (an integer 5 to 95, or
+`null` outside that range), `range` (`within`, `below_p5` or `above_p95`), `task_type`, `developers`,
+`sessions`, `source`, `dataset_version`, `date_range`, `attribution` and `note`. It is where the session
+falls among other developers' sessions of the same task type: context, not a verdict. It is `null` for
+`feature-build`, for a task type whose cell was not published and when the turn count is unknown. See
+[MULTIDEV_REFERENCE.md](MULTIDEV_REFERENCE.md).
+
 `cache_churn` (additive, `schema_version` stays 1) is always an object with a fixed key set; see
 [CACHE_CHURN.md](CACHE_CHURN.md) for what it means. It is computed from the source transcript when
 `score` runs and is never stored. Keys: `status` (`"ok"`, or `"unavailable"` when the transcript could

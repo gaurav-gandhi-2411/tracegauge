@@ -20,12 +20,18 @@ from tracegauge._digest import reconstruct_digest
 from tracegauge.adapt import adapt_session
 from tracegauge.attribution import AttributionResult, compute_attribution
 from tracegauge.baselines import BUNDLED_BASELINES_PATH, load_baselines
+from tracegauge.context import context_line, session_context
 from tracegauge.cost import load_price_table
 from tracegauge.intelligence.cache import get_or_compute_intelligence
 from tracegauge.intelligence.chat import ChatApiConfig, ask_api, ask_local
 from tracegauge.legacy import LEGACY_ROW_LABEL, is_legacy_row
 from tracegauge.patterns_extra import PatternsExtraMissing, require_patterns_extra
-from tracegauge.self_baseline import SelfBaselineState, compute_baseline_cost_band, load_or_compute
+from tracegauge.self_baseline import (
+    MIN_OWN_SESSIONS,
+    SelfBaselineState,
+    compute_baseline_cost_band,
+    load_or_compute,
+)
 from tracegauge.store import (
     _SORT_COLUMN_WHITELIST,
     TrajectoryRenderState,
@@ -404,6 +410,13 @@ def create_app(config: ServerConfig) -> Flask:
         scope_floor = type_bl.scope_floor if type_bl is not None else 20
         cost_band = compute_baseline_cost_band(conn, task_type, scope_floor)
 
+        # Other developers' percentile: context only, never a verdict (tracegauge.context).
+        ctx = session_context(
+            task_type, int(session.get("real_tokens") or 0), int(session.get("turn_count") or 0)
+        )
+        context_text = context_line(ctx) if ctx else None
+        own_n = min(type_bl.waste_free_n, MIN_OWN_SESSIONS) if type_bl is not None else 0
+
         is_legacy = is_legacy_row(session)
         cost_usd = session.get("session_cost_usd")
         if is_legacy:
@@ -431,6 +444,9 @@ def create_app(config: ServerConfig) -> Flask:
         return render_template(
             "session_detail.html",
             session=session,
+            context_text=context_text,
+            own_n=own_n,
+            own_target=MIN_OWN_SESSIONS,
             traj_state=traj_state,
             TrajectoryRenderState=TrajectoryRenderState,
             price_provenance=_price_provenance,

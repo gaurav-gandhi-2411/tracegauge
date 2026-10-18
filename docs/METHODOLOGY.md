@@ -74,7 +74,7 @@ No composite score. Three independent labeled signals, each with its own domain 
 
 ### Token economy
 
-Compares the session's real token count (AI turns only; cache-read inflation removed) against the p25–p75 band of YOUR OWN lean, waste-free sessions of the same task type (ml-eval, debug-fix, infra-deploy, research-recon, feature-build). The band exists once you have 10 such sessions of the type (and its lean half is stable); before that the verdict is `unavailable` and the text says `building (n/10)`. Verdicts: `above_p75`, `within_band`, `below_p25`, `unavailable`.
+Compares the session's real token count (AI turns only; cache-read inflation removed) against the p25–p75 band of YOUR OWN lean, waste-free sessions of the same task type (ml-eval, debug-fix, infra-deploy, research-recon, feature-build). The band exists once you have 10 such sessions of the type (and its lean half is stable); before that the verdict is `unavailable` and the text says `building (n/10)`. Verdicts: `above_p75`, `within_band`, `below_p25`, `unavailable`. Separately, `score` prints a **context** line: the session's tokens per turn as a percentile of other developers' sessions of the same task type (a developer-weighted table built from the public SWE-chat dataset, labelled with its population, source and dates). It is not a verdict and is not used in one; how it is built, why tokens per turn, and when it is hidden: [MULTIDEV_REFERENCE.md](MULTIDEV_REFERENCE.md).
 
 `unavailable` when the session is below the per-type p10 turn floor (scope gate) — the session is too short relative to the reference mass to produce a meaningful comparison. Not an error.
 

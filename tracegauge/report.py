@@ -14,6 +14,7 @@ import json
 import textwrap
 from typing import Any
 
+from tracegauge.context import context_for_result, context_line
 from tracegauge.json_out import SCHEMA_VERSION as JSON_SCHEMA_VERSION
 from tracegauge.score import ThreeAxisResult
 from tracegauge.takeaway import BREAKDOWN_NOTE, format_cost_breakdown_lines
@@ -174,6 +175,10 @@ def format_human(
                 f"p25: {result.p25:,} / median: {result.median:,} / p75: {result.p75:,}"
             )
         lines.append(_wrap(result.interpretation))
+    ctx = context_for_result(result)
+    if ctx is not None:
+        lines.append("")
+        lines.append(_wrap(context_line(ctx)))
     lines.append("")
     lines.append(_wrap(result.token_domain_of_validity))
     lines.append("")
@@ -377,5 +382,6 @@ def format_json(result: ThreeAxisResult, legacy_rows_excluded: int = 0) -> str:
         "legacy_rows_excluded": legacy_rows_excluded,
         **dataclasses.asdict(result),
     }
+    d["context"] = context_for_result(result)  # additive; null when not published for the session
     d.pop("turn_count", None)  # store-only field (ThreeAxisResult.turn_count); not documented JSON
     return json.dumps(d, indent=2, ensure_ascii=False)
