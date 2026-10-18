@@ -314,7 +314,8 @@ def build_subagents_summary(session_cost: SessionCost | None) -> dict[str, Any]:
         )
     rows.sort(key=lambda r: (-(r["usd"] or 0.0), r["type"]))
     priced = [r for r in rows if r["usd"] is not None]
-    usd_total = sum(r["usd"] for r in priced) if priced else None
+    # No subagents is a known zero; subagents with nothing priced is unknown (null), never 0.0.
+    usd_total = sum(r["usd"] for r in priced) if priced else (None if rows else 0.0)
     return {
         "count": sum(r["files"] for r in rows),
         "tokens": sum(r["tokens"] for r in rows),

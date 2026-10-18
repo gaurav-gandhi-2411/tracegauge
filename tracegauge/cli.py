@@ -1293,7 +1293,7 @@ def _print_cost_subagents(report: PeriodCostReport) -> None:
         n = sub.sessions_not_recorded
         print(
             f"\nSubagents: {n} session{'s' if n != 1 else ''} not recorded, re-score "
-            "(`tracegauge rescore`) to include."
+            "(`tracegauge score <path>`) to include."
         )
     if not sub.by_type:
         return  # nothing to report: no subagents among the recorded sessions
