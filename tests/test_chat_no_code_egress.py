@@ -205,9 +205,7 @@ class TestEgressNoticeAccuracy:
         assert "no session content" in notice_lower or "not" in notice_lower
 
     def test_notice_names_anthropic(self):
-        assert (
-            "anthropic" in CHAT_EGRESS_NOTICE.lower() or "api.anthropic.com" in CHAT_EGRESS_NOTICE
-        )
+        assert "anthropic" in CHAT_EGRESS_NOTICE.lower()
 
     def test_notice_no_tracegauge_server(self):
         """Must state that no tracegauge server is involved."""

@@ -16,6 +16,7 @@ Verifies that:
 import json
 import re
 from unittest.mock import MagicMock, patch
+from urllib.parse import urlparse
 
 import pytest
 from tracegauge.intelligence.chat import (
@@ -263,7 +264,7 @@ class TestApiConsentGate:
         mock_post.assert_called_once()
         # Verify the call went to Anthropic
         call_url = mock_post.call_args[0][0]
-        assert "anthropic.com" in call_url
+        assert urlparse(call_url).hostname == "api.anthropic.com"
 
     def test_ask_api_context_contains_no_code(self):
         """The payload sent to Anthropic must not contain raw session content."""
