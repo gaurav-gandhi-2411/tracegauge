@@ -1,0 +1,81 @@
+name: Adapter request
+description: Ask for support for another coding agent's session files (only Claude Code is supported today).
+labels: ["adapter"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        An adapter turns one agent's session files into the digest tracegauge scores. Each one
+        needs its own parser and a fresh validation run, not a flag; read
+        [docs/ADAPTERS.md](https://github.com/gaurav-gandhi-2411/tracegauge/blob/master/docs/ADAPTERS.md)
+        for what an adapter has to produce and which agents have been looked at so far.
+
+        **Describe the shape of your files, not their content.** Do not paste real prompts,
+        code, file paths or keys. Replace every value with a placeholder; field names, nesting
+        and number types are what matter (see PRIVACY.md).
+
+  - type: input
+    id: agent
+    attributes:
+      label: Which agent, and which version?
+      description: The agent's name and the version that wrote the files (its `--version` output).
+      placeholder: "ExampleAgent 1.2.3"
+    validations:
+      required: true
+
+  - type: textarea
+    id: location
+    attributes:
+      label: Where does it store sessions?
+      description: |
+        The default directory or database file and the pattern of the file names, plus any
+        environment variable or flag that moves it. Write your home directory as `~`.
+      placeholder: "~/.example/sessions/YYYY/MM/DD/session-<id>.jsonl"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: format
+    attributes:
+      label: What is the storage format?
+      options:
+        - JSON Lines (one JSON object per line)
+        - One JSON document per session
+        - SQLite database
+        - Markdown or plain text
+        - Something else (describe below)
+    validations:
+      required: true
+
+  - type: textarea
+    id: usage
+    attributes:
+      label: Where are token counts recorded, if anywhere?
+      description: |
+        Per response, cumulative, only at the end of a session, or not at all? Are cached tokens
+        recorded separately, and is the model named per turn? "I don't know" is a useful answer.
+    validations:
+      required: true
+
+  - type: textarea
+    id: sample
+    attributes:
+      label: A sanitised sample of the structure
+      description: |
+        A few lines with every string, path and id replaced by a placeholder, keeping the keys
+        and the types of the numbers. Not a real transcript.
+      render: json
+      placeholder: |
+        {"type": "message", "role": "assistant", "model": "<model>", "usage": {"input": 0, "output": 0}}
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: The sample contains no real prompts, code, paths, ids or keys.
+          required: true
+        - label: I read docs/ADAPTERS.md and checked that an adapter for this agent is not already shipped or being built.
+          required: true

@@ -1,0 +1,45 @@
+name: Feature request
+description: Suggest a new command, flag, report section or other behaviour for tracegauge.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting this. tracegauge scores locally and makes no network call while
+        scoring, so a request that needs a hosted service, telemetry or a paid API is out of
+        scope (see ROADMAP.md). Wrong numbers and crashes belong in the bug template; a new agent
+        to read belongs in the adapter request template.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: The situation first, not the solution. What did you look for in the output and not find?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like tracegauge to do?
+      description: A command, flag or output sketch is enough. If it adds a number, say where the number would come from.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What do you do today instead?
+      description: A script, a manual check, another tool. Optional, but it shows how much the feature is worth.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched the open issues, the CHANGELOG and ROADMAP.md and did not find this.
+          required: true
+        - label: I did not paste real session text, paths or keys into this issue (see PRIVACY.md).
+          required: true

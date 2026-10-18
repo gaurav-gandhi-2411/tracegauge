@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Read the docs first
+    url: https://github.com/gaurav-gandhi-2411/tracegauge/blob/master/docs/COMMANDS.md
+    about: Commands, the SDK and what each output means. The methodology and its caveats are in docs/METHODOLOGY.md.
+  - name: Report a security problem privately
+    url: https://github.com/gaurav-gandhi-2411/tracegauge/blob/master/SECURITY.md
+    about: Please do not open a public issue for a vulnerability; SECURITY.md says how to report it.
