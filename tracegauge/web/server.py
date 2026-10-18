@@ -196,14 +196,6 @@ def _stored_attribution_line(session: dict) -> str | None:
     return f"{total} total · no waste detected"
 
 
-# Historical anchor: B2-era scored sessions among content sessions (turn_count > 0).
-# At P4 activation (2026-06-08): 545 total unavailable, 509 zero-turn stubs,
-# 36 content sessions OOS under B2 scope gates → 174/210 content sessions scored (82.9%).
-_B2_ERA_CONTENT_SCORED: int = 174
-_B2_ERA_CONTENT_SCORED_PCT: float = 82.9
-_B2_ERA_CONTENT_TOTAL: int = 210
-
-
 def _check_ollama(endpoint: str = "http://localhost:11434") -> bool:
     """Probe Ollama health endpoint; returns True if reachable. Non-blocking (3 s cap)."""
     try:
@@ -255,9 +247,9 @@ def _projected_metrics(conn: sqlite3.Connection, self_bl_state) -> dict:
         "empty_stubs_pct": pct_of_total(empty_stubs),
         "content_self_scored": content_self_scored,
         "content_self_pct": pct_of_content(content_self_scored),
-        "b2_content_scored": _B2_ERA_CONTENT_SCORED,
-        "b2_content_scored_pct": _B2_ERA_CONTENT_SCORED_PCT,
-        "b2_content_total": _B2_ERA_CONTENT_TOTAL,
+        # How many task types have switched from "building" to your own baseline.
+        "types_active": sum(1 for tb in self_bl_state.by_type.values() if tb.source == "self"),
+        "types_total": len(self_bl_state.by_type),
     }
 
 
