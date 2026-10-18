@@ -92,7 +92,7 @@ already records.
 ## What it does not tell you
 
 * It is the percentile among **public repositories of developers who use the Entire CLI**, not all Claude Code
-  users. Their sessions are mostly short.
+  users, and the population is its own: a heavy user can sit high on it without anything being wrong.
 * Each developer is weighted equally within a task type, so a prolific developer cannot set it. Sessions of one
   developer are not independent; the intervals resample developers, not sessions.
 * The task type is the tool's own rule (`classify_session`), applied to both populations. A session that the rule
