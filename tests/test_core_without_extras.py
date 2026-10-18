@@ -83,8 +83,9 @@ def test_quickstart_runs_and_shows_finding_without_extras(tmp_path: Path) -> Non
     r = _run_cli(tmp_path, "quickstart")
     assert r.returncode == 0, r.stderr
     assert "REPEATED-FAILED-RETRY" in r.stdout
-    # A first-run user has no sessions of their own: the token axis says so, not a borrowed verdict.
-    assert "building (0/10)" in r.stdout.split("TRAJECTORY QUALITY")[0]
+    # A first-run user has no sessions of their own, so the demo says it uses a synthetic history.
+    token = r.stdout.split("TRAJECTORY QUALITY")[0]
+    assert "SYNTHETIC HISTORY" in token and "synthetic-history research-recon sessions" in token
 
 
 def test_score_runs_without_extras(tmp_path: Path) -> None:

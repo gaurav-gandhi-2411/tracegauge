@@ -37,10 +37,10 @@
         <th>Task Type</th>
         <th>Sessions</th>
         <th>In-Scope</th>
-        <th>Lean-N</th>
+        <th>Your sessions used</th>
         <th>Scope Floor</th>
         <th>Status</th>
-        <th>Band</th>
+        <th>Your band</th>
       </tr>
     </thead>
     <tbody>
@@ -49,7 +49,7 @@
         <td><strong>{{ row.task_type }}</strong></td>
         <td>{{ row.total }}</td>
         <td>{{ row.in_scope }}</td>
-        <td>{{ row.lean_n }}</td>
+        <td>{{ row.own_n }}</td>
         <td>{{ row.scope_floor }} turns</td>
         <td>
           {% if row.source == "self" %}

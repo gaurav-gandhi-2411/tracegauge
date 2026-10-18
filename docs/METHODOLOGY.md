@@ -21,7 +21,7 @@ Three-axis efficiency scoring for Claude Code sessions — token economy, trajec
 
 tracegauge is feature-complete — the current release bundles the full validated toolchain (B1–B5 research arc + every shipped phase):
 
-- **Self-baseline token scoring** — your sessions are scored against *your own* lean, waste-free sessions per task type, not a one-size-fits-all corpus. A task type needs 10 of your own waste-free sessions before it gets a token verdict; until then it shows `building (n/10)`, and no verdict is borrowed from a bundled table or from another population.
+- **Self-baseline token scoring** — a session is placed among *your own* sessions of the same task type, not a one-size-fits-all corpus. A task type needs 10 of your other in-scope sessions with usage before it gets a token verdict (waste is not a filter; empty stubs and sessions below the scope floor do not count); until then it shows `building (n/10)`, and no verdict is borrowed from a bundled table or from another population.
 - **Dollar cost attribution** — six reconciling buckets (B1–B6) that split every billed token into where the money actually went; token% and cost% shown side by side so the cache-read divergence (lots of tokens, little cost) is visible.
 - **Deterministic waste detection** — frozen, observable-invariant detectors (repeated-failed-retry, redundant-read) with proof turns and per-event wasted cost. No LLM judgment, no false-positive guessing.
 - **Trajectory judge** — purposefulness verdict from a local Ollama model ($0, GPU) *or* an opt-in API judge that sends snippets to your model provider only on explicit per-session consent. Renders UNAVAILABLE as a complete, expected state when no judge is configured.
@@ -74,11 +74,11 @@ No composite score. Three independent labeled signals, each with its own domain 
 
 ### Token economy
 
-Compares the session's real token count (AI turns only; cache-read inflation removed) against the p25–p75 band of YOUR OWN lean, waste-free sessions of the same task type (ml-eval, debug-fix, infra-deploy, research-recon, feature-build). The band exists once you have 10 such sessions of the type (and its lean half is stable); before that the verdict is `unavailable` and the text says `building (n/10)`. Verdicts: `above_p75`, `within_band`, `below_p25`, `unavailable`.
+Compares the session's real token count (AI turns only; cache-read inflation removed) against YOUR OWN sessions of the same task type (ml-eval, debug-fix, infra-deploy, research-recon, feature-build). From 10 other in-scope sessions with usage it reports the session's mid-rank percentile among all of them ("about the 70th percentile of your 24 debug-fix sessions") and labels it against the nearest-rank p25 and p75 of those sessions; before that the verdict is `unavailable` and the text says `building (n/10)`. There is no lean-subset selection, no outlier cap and no stability guard: every in-scope session counts once, and a session already in the store is not compared with itself. Verdicts: `above_p75`, `within_band`, `below_p25`, `unavailable`.
 
 `unavailable` when the session is below the per-type p10 turn floor (scope gate) — the session is too short relative to the reference mass to produce a meaningful comparison. Not an error.
 
-**Domain of validity:** relative to your own lean sessions of the same task type, not to quality-certified runs and not to anyone else's habits. Interpret alongside the trajectory verdict.
+**Domain of validity:** relative to your own sessions of the same task type (their whole history, not a selected subset), not to quality-certified runs and not to anyone else's habits. Interpret alongside the trajectory verdict.
 
 ### Trajectory quality
 
