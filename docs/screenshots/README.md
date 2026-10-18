@@ -8,7 +8,7 @@ These replace the PR-evidence screenshots removed in the 0.16.0 history scrub. B
 cannot be recreated (the old builds are gone), so each image is the current build in one state.
 
 - Captured on: 2026-10-18
-- master commit: `269da4790a33fee1eb5db9f9c125c6682c5bdace` (PR #154, the turn-count fix; pyproject version 0.16.0, unreleased 0.17.0 work)
+- master commit: `112729815854d7dc55edd119ee7596da7a7e57bd` (PR #155, banner wording; includes the #154 turn-count fix; pyproject version 0.16.0, unreleased 0.17.0 work)
 - Browser: Chrome headless, 1280 px wide, light theme (the dashboard has no dark theme)
 
 ## How they were produced
@@ -52,7 +52,6 @@ out of the tree (the page reads the transcript on request); the file was moved b
 - Ten synthetic sessions are too few, and too short, to activate a self-baseline (it needs at least
   8 waste-free in-scope sessions of one task type), so the home and baseline-status pages show
   `Scored vs your lean runs: 0 / 10` and "building" for every type. The generator was kept at ten
-  sessions. The home banner still opens with "Self-baseline active on all 5 task types" next to
-  that 0 / 10: that is the build's wording, not a capture error.
+  sessions, and the home banner reads "Self-baseline active on 0 of 5 task types".
 - All sessions carry the capture date (the store dates a session by when it was scored, not by its
   transcript timestamps), so the trends page cannot show a history.
