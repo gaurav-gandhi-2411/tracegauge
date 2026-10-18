@@ -192,6 +192,24 @@ def test_backfill_then_self_baseline_activates(scanned: tuple[Path, list[Path]])
     assert compute_self_baselines(db, baselines).by_type[tt].source == "self"
 
 
+def test_backfill_refreshes_a_self_baseline_cache_built_while_turn_counts_were_zero(
+    scanned: tuple[Path, list[Path]],
+) -> None:
+    from tracegauge.self_baseline import load_or_compute
+
+    db, _ = scanned
+    conn = sqlite3.connect(db)
+    conn.execute("UPDATE sessions SET turn_count = 0")  # a store written by the buggy versions
+    conn.commit()
+    conn.close()
+    baselines = load_baselines(BUNDLED_BASELINES_PATH)
+    tt = _rows(db)[0]["task_type"]
+    assert load_or_compute(db, baselines).by_type[tt].source == "building"  # writes the cache
+    assert backfill_turn_counts(db)["updated"] == N_SESSIONS
+    # No session was added, so only the turn counts changed: the cache must notice.
+    assert load_or_compute(db, baselines).by_type[tt].source == "self"
+
+
 # (d) rescore --dry-run ---------------------------------------------------------------------
 
 

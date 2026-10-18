@@ -1091,8 +1091,9 @@ def _run_rescore(
     turns: dict[str, int] | None
     try:
         turns = backfill_turn_counts(resolved, dry_run=dry_run)
-    except Exception:
+    except Exception as exc:
         turns = None
+        print(f"[WARN] Could not record turn counts on older sessions: {exc}", file=sys.stderr)
 
     if json_mode:
         emit(rescore_payload(summary, dry_run=dry_run, limit=limit))
@@ -1115,6 +1116,8 @@ def _run_rescore(
     if turns is not None and turns["updated"]:
         tverb = "would get" if dry_run else "got"
         print(f"  {turns['updated']} older session(s) {tverb} their turn count recorded.")
+    if turns is not None and turns["errors"]:
+        print(f"  {turns['errors']} older session(s) could not be read for their turn count.")
     return EXIT_ADAPT_ERROR if summary["errors"] else EXIT_OK
 
 

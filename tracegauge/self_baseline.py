@@ -398,7 +398,13 @@ def compute_self_baselines(
 
 
 def _fingerprint(conn: sqlite3.Connection, b2_baselines: dict) -> dict[str, int]:
-    """Return per-type waste-free session counts; used to detect when to recompute."""
+    """Return per-type waste-free session counts; used to detect when to recompute.
+
+    ``<type>:turns`` counts the same rows that have a recorded turn count: filling in turn counts
+    on older rows (``tracegauge rescore``) makes them eligible for the baseline without adding a
+    row, so the cache has to notice it. Caches written before this key existed never match, which
+    recomputes them once.
+    """
     result: dict[str, int] = {}
     # Counting only current-adapter rows also invalidates a cache built before the upgrade.
     cur_sql, cur_params = _current_adapter_clause(conn)
@@ -409,6 +415,13 @@ def _fingerprint(conn: sqlite3.Connection, b2_baselines: dict) -> dict[str, int]
             (task_type, *cur_params),
         ).fetchone()
         result[task_type] = int(row[0]) if row else 0
+        turns = conn.execute(
+            "SELECT COUNT(*) FROM sessions "
+            "WHERE task_type = ? AND waste_event_count = 0 AND real_tokens > 0 "
+            "AND turn_count > 0" + cur_sql,
+            (task_type, *cur_params),
+        ).fetchone()
+        result[f"{task_type}:turns"] = int(turns[0]) if turns else 0
     return result
 
 
