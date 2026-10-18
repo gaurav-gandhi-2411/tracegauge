@@ -183,7 +183,8 @@ def test_unpriced_model_is_a_floor_never_zero(tmp_path: Path) -> None:
     text = format_human(result)
     verifier_line = next(ln for ln in text.splitlines() if ln.strip().startswith("verifier:"))
     assert "unpriced" in verifier_line and "$0.00" not in verifier_line
-    assert ">= $" in next(ln for ln in text.splitlines() if ln.strip().startswith("mixed:"))
+    mixed_line = next(ln for ln in text.splitlines() if ln.strip().startswith("mixed:"))
+    assert ">= " in mixed_line and "unpriced" not in mixed_line
     # Negative control: a fully priced session never claims a floor or an unpriced type.
     clean = _score(_make_session(tmp_path, THREE_TYPES, sid="sid-clean"))[2]
     assert "unpriced" not in "\n".join(
@@ -371,3 +372,39 @@ def test_cost_command_text_and_json(
         for t in sub["by_type"]
     )
     assert "subagents" in doc and "by_project" in doc  # existing keys are still there
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        '[{"type": "x"}]',
+        '{"type": "x"}',
+        "42",
+        '["x"]',
+        '[{"type": "x", "files": "n", "requests": 1, '
+        '"tokens": 1, "usd": null, "usd_is_floor": false}]',
+    ],
+)
+def test_wrong_shape_stored_split_counts_as_not_recorded_never_crashes(
+    tmp_path: Path, bad: str
+) -> None:
+    db = _store_three_sessions(tmp_path)
+    conn = open_db(db)
+    conn.execute("UPDATE sessions SET subagent_by_type_json = ? WHERE session_id = 'sid-a'", (bad,))
+    conn.commit()
+    start, end, label = resolve_period(week=True)
+    sub = compute_period_cost(conn, start, end, period_label=label).subagents
+    assert sub.sessions_not_recorded == 2  # sid-a (unreadable) + sid-c (NULL)
+    assert sub.sessions_recorded == 1  # sid-b only: nothing from sid-a leaked into the totals
+    assert {t.type for t in sub.by_type} == {"executor"}
+    conn.close()
+
+
+def test_sub_cent_price_is_not_shown_as_zero_dollars() -> None:
+    from tracegauge.report import _fmt_sub_usd
+
+    assert _fmt_sub_usd(0.003525, False) == "<$0.01"
+    assert _fmt_sub_usd(0.003525, True) == ">= <$0.01"
+    assert _fmt_sub_usd(0.0, False) == "$0.00"  # a genuine zero stays $0.00
+    assert _fmt_sub_usd(0.02, False) == "$0.02"
+    assert _fmt_sub_usd(None, False) == "unpriced"

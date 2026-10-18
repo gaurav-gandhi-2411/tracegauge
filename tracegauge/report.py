@@ -329,7 +329,9 @@ def _fmt_sub_usd(usd: float | None, is_floor: bool) -> str:
     """'$X.XX' / '>= $X.XX' for a lower bound / 'unpriced' when nothing was priced."""
     if usd is None:
         return "unpriced"
-    return f"{'>= ' if is_floor else ''}{format_cost_usd(usd)}"
+    # A real but sub-cent price must not read as "$0.00" (that looks like free).
+    amount = "<$0.01" if 0 < usd < 0.005 else format_cost_usd(usd)
+    return f"{'>= ' if is_floor else ''}{amount}"
 
 
 def format_subagent_lines(

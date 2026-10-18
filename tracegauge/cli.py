@@ -1300,6 +1300,7 @@ def _print_cost_subagents(report: PeriodCostReport) -> None:
     floor = ">= " if sub.usd_is_floor else ""
     usd_share = (
         f"{sub.share_of_total_usd * 100:.0f}% of spend"
+        f"{' (priced part)' if sub.usd_is_floor else ''}"
         if sub.share_of_total_usd is not None
         else ""
     )
@@ -1317,7 +1318,12 @@ def _print_cost_subagents(report: PeriodCostReport) -> None:
     )
     for t in sub.by_type:
         floor_t = ">= " if t.usd_is_floor else ""
-        amount = "unpriced" if t.usd is None else f"{floor_t}${t.usd:,.2f}"
+        if t.usd is None:
+            amount = "unpriced"
+        elif 0 < t.usd < 0.005:
+            amount = f"{floor_t}<$0.01"  # a real sub-cent price must not read as "$0.00"
+        else:
+            amount = f"{floor_t}${t.usd:,.2f}"
         share = (
             f", {t.share_of_total_usd * 100:.0f}% of spend"
             if t.share_of_total_usd is not None

@@ -167,8 +167,18 @@ def _period_subagents(rows: list[sqlite3.Row]) -> PeriodSubagents:
             out.sessions_not_recorded += 1
             continue
         try:
-            entries = json.loads(raw)
-        except ValueError:
+            entries = [
+                (
+                    str(e["type"]),
+                    int(e["files"]),
+                    int(e["requests"]),
+                    int(e["tokens"]),
+                    None if e["usd"] is None else float(e["usd"]),
+                    bool(e["usd_is_floor"]),
+                )
+                for e in json.loads(raw)
+            ]
+        except (ValueError, TypeError, KeyError):
             out.sessions_not_recorded += 1  # unreadable counts as not recorded, never as zero
             continue
         out.sessions_recorded += 1
@@ -176,14 +186,14 @@ def _period_subagents(rows: list[sqlite3.Row]) -> PeriodSubagents:
         out.usd += float(r["subagent_cost_usd"] or 0.0)
         out.subagent_real_tokens += int(r["subagent_tokens"] or 0)
         out.recorded_real_tokens += int(r["real_tokens"] or 0) + int(r["subagent_tokens"] or 0)
-        for e in entries:
-            t = types.setdefault(e["type"], SubagentTypePeriod(type=e["type"]))
-            t.files += int(e["files"])
-            t.requests += int(e["requests"])
-            t.tokens += int(e["tokens"])
-            if e["usd"] is not None:
-                t.usd = (t.usd or 0.0) + float(e["usd"])
-            if e["usd_is_floor"]:
+        for e_type, e_files, e_requests, e_tokens, e_usd, e_floor in entries:
+            t = types.setdefault(e_type, SubagentTypePeriod(type=e_type))
+            t.files += e_files
+            t.requests += e_requests
+            t.tokens += e_tokens
+            if e_usd is not None:
+                t.usd = (t.usd or 0.0) + e_usd
+            if e_floor:
                 t.usd_is_floor = True
                 out.usd_is_floor = True
     for t in types.values():
