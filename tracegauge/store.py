@@ -1048,6 +1048,31 @@ def backfill_turn_counts(
     return {"updated": updated, "missing_source": missing, "errors": errors, "unchanged": unchanged}
 
 
+def queue_rescore_of_hidden_verdicts(
+    conn: sqlite3.Connection, task_types: list[str] | tuple[str, ...]
+) -> int:
+    """Make the watcher score again the rows that hid a bundled-band verdict.
+
+    Before the fallback, a session of a type whose own baseline was still building was stored with
+    ``baseline_source = 'building'`` and ``band_verdict = 'unavailable'`` even though the bundled
+    reference had a band for the type. Those rows are only scored again when their transcript
+    changes, so they would stay blank. Blanking ``source_hash`` of exactly those rows (types the
+    bundled corpus has a band for) makes the next scan score them again, which restores the real
+    hash. Idempotent: a row scored again no longer matches. Returns the number of rows queued.
+    """
+    if not task_types:
+        return 0
+    marks = ",".join("?" for _ in task_types)
+    cur = conn.execute(
+        "UPDATE sessions SET source_hash = '' "
+        "WHERE baseline_source = 'building' AND band_verdict = 'unavailable' "
+        f"AND source_hash != '' AND task_type IN ({marks})",
+        tuple(task_types),
+    )
+    conn.commit()
+    return int(cur.rowcount)
+
+
 def _deserialize_row(row: sqlite3.Row) -> dict:
     """Convert a sqlite3.Row to a plain dict with JSON fields decoded."""
     d = dict(row)
@@ -1117,6 +1142,7 @@ __all__ = [
     "backfill_waste",
     "backfill_cost",
     "backfill_turn_counts",
+    "queue_rescore_of_hidden_verdicts",
     "get_session",
     "list_sessions",
 ]
