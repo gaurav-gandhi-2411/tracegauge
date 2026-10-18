@@ -321,3 +321,19 @@ def test_no_paragraph_repeats_a_sentence() -> None:
             sentences = [s.strip() for s in line.split(". ") if len(s.strip()) > 60]
             dup = {s for s in sentences if sentences.count(s) > 1}
             assert not dup, f"{rel}:{n} repeats a sentence: {sorted(dup)[0][:80]}"
+
+
+def test_ratio_of_sums_interval_is_a_bootstrap_not_wilson() -> None:
+    """The subagent share is a ratio of sums, so a Wilson (binomial) interval does not apply to it."""
+    for rel in (
+        "README.md",
+        "CHANGELOG.md",
+        "docs/METHODOLOGY.md",
+        "docs/JSON_OUTPUT.md",
+        "docs/ACTIONABLE_FINDINGS.md",
+    ):
+        for n, line in enumerate((ROOT / rel).read_text(encoding="utf-8").splitlines(), 1):
+            if "53.8% of API-equivalent" in line or "subagent share" in line.lower():
+                assert "wilson" not in line.lower(), (
+                    f"{rel}:{n} labels a ratio-of-sums interval as Wilson"
+                )

@@ -294,9 +294,23 @@ did not say that a short shared prefix (the system prompt, the tool definitions)
 longer conversation part after it is written again, so this is most likely a gap in the card rather than a Claude error. That rests on the reasons given on four
 cards and was not tested separately; the other judges did not stumble on it.
 
-**The fix and its limit.** One neutral sentence about partial reads was added to the glossary and Claude was re-run
-on the same cards. That re-run was stopped by the system after 60 of the 160 cards (low memory) and has not been
-resumed, so it is a partial result and is not used above. On those 60 events `TTL_GAP` went from 11 to 19 of 19,
-and `UNEXPLAINED` went from 13 to 9 of 14: the sentence also pushed Claude to call some no-mechanism events
-`TTL_GAP`. So the sentence trades one error for another, and a complete re-run on the same 160 cards is still to be
-done before the card is changed. The figures in the table are for the cards as originally used.
+**The card change and the partial re-run (not used in the figures).** One neutral sentence about partial reads was
+added to the glossary of the cards (a short shared prefix such as the system prompt and tool definitions can still be
+read while the longer conversation part after it is written again), and Claude was re-run on the same cards. The
+re-run was stopped by the system after 60 of the 160 cards (low memory), and it has deliberately not been completed or
+resumed, so it is a partial result. The same 60 cards, Claude's answers agreeing with the detector, original cards
+then card with the sentence:
+
+| Cause (detector label) | Original cards | Card with the sentence |
+|---|---|---|
+| `TTL_GAP` | 11/19 | 19/19 |
+| `MODEL_SWITCH` | 16/16 | 16/16 |
+| `COMPACTION` | 11/11 | 11/11 |
+| `UNEXPLAINED` | 13/14 | 9/14 |
+| All 60 | 51/60 | 55/60 |
+
+12 of the 60 answers changed. The sentence fixed the `TTL_GAP` misses and also pushed Claude to call some
+no-mechanism events `TTL_GAP` (it gave `TTL_GAP` 24 times against 19 events with that detector label), so it
+trades one error for another. The 60 are the first 60 cards of a seeded shuffle of the 160, so they are a
+random subset, but 14 to 19 events per cause is too few for a per-cause precision estimate. All figures in the
+table above, and the consensus 158/160, are for the cards as originally used.

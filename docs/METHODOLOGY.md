@@ -78,6 +78,8 @@ Compares the session's real token count (AI turns only; cache-read inflation rem
 
 `unavailable` when the session is below the per-type p10 turn floor (scope gate) — the session is too short relative to the reference mass to produce a meaningful comparison. Not an error.
 
+**Why the pool is per task type.** Task type explains almost none of the spread in tokens per turn within a public SWE-chat developer (0.3% of the variance; developer-cluster bootstrap 95% interval 0.1 to 0.7%; 7,023 in-scope sessions of 480 developers) but a third of it across the maintainer's own sessions (eta² 0.34, project-cluster bootstrap 95% interval 0.16 to 0.57; 45 in-scope sessions of 11 projects; the maintainer's unpublished local measurement). A verdict pooled across task types would only be justified if the type effect were small for the person whose sessions form the pool, and that upper bound is not below 0.10, so the verdict stays per task type. These figures are for log tokens per turn; the verdict itself compares session token totals.
+
 **Domain of validity:** relative to your own sessions of the same task type (their whole history, not a selected subset), not to quality-certified runs and not to anyone else's habits. Interpret alongside the trajectory verdict.
 
 ### Trajectory quality
