@@ -86,3 +86,21 @@ such a row with zeros.
 
 If the transcripts are gone (Claude Code deletes old ones), `rescore` cannot help: those rows stay
 excluded and your self-baselines and alarm threshold rebuild from new sessions.
+
+# Upgrading to 0.17 (token verdicts come from your own sessions)
+
+Until 0.16 `tracegauge score FILE` compared a session with a bundled one-developer band, while the
+watcher and the dashboard showed no token verdict for a task type until about 17 of your own
+waste-free sessions existed. From 0.17 every surface behaves the same way:
+
+* A task type gets a token verdict (`above_p75`, `within_band`, `below_p25`) only from your own
+  sessions: at least 10 waste-free, in-scope sessions of that type, banded on their lean half.
+* Before that it shows `building (n/10)` and the token verdict is `unavailable`. Nothing is
+  borrowed from the one-developer table or from any other population. The waste, cost and
+  trajectory readings do not depend on the token verdict.
+* `tracegauge score FILE` reads your store (when there is one) to know how many sessions of the
+  type you have; with no store every type reads `building (0/10)`.
+* Stored sessions keep the verdict they were scored with; nothing is rewritten.
+* The one-developer table remains in the package (labelled "reference: 1 developer") for the live
+  alarm's fallback threshold and as the upper bound of a task type's scope floor. It is never
+  shown as a verdict.

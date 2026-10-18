@@ -11,7 +11,7 @@ Covers the ten required cases:
   3. min_n gate → 'building' (too few lean sessions)
   4. min_n gate → 'self'   (enough lean sessions)
   5. Cold-start / zero sessions → 'building', None stats
-  6. corpus_fallback opt-in → 'corpus', B2 stats
+  6. nothing is borrowed from the bundled table; activation at 10 of your own sessions
   7. Anti-trap: lean-subset p75 is below a heavy test session; naive p75 is not
   8. Scope floor self-derived (user p10 below b2_floor; user p10 above b2_floor)
   9. Scope floor MIN_MEANINGFUL_TURNS guard (user p10 < 20 → floor clamped to 20)
@@ -21,9 +21,12 @@ Covers the ten required cases:
 import sqlite3
 from pathlib import Path
 
+import pytest
 from tracegauge.adapt import ADAPTER_VERSION, COST_VERSION
 from tracegauge.self_baseline import (
     MIN_MEANINGFUL_TURNS,
+    MIN_OWN_SESSIONS,
+    building_state,
     compute_self_baselines,
 )
 
@@ -194,9 +197,9 @@ def test_outlier_exclusion_p90_cap(tmp_path: Path) -> None:
 
 
 def test_min_n_gate_building(tmp_path: Path) -> None:
-    """12 waste-free sessions: after p90-cap lean-subset ~5 < min_lean_n=8 → 'building'."""
-    tokens = list(range(100, 1300, 100))  # [100..1200], 12 sessions
-    assert len(tokens) == 12
+    """9 waste-free sessions of the type: fewer than the 10 of your own that a verdict needs."""
+    tokens = list(range(100, 1000, 100))  # [100..900], 9 sessions
+    assert len(tokens) == 9
 
     db_path = _make_test_db(
         tmp_path,
@@ -205,14 +208,9 @@ def test_min_n_gate_building(tmp_path: Path) -> None:
     state = compute_self_baselines(db_path, _B2)
     bl = state.by_type["debug-fix"]
 
-    # p90-cap: idx = max(0, int(12*0.90)-1) = max(0,9) = 9 → cap = tokens[9] = 1000
-    # sessions ≤ 1000: 10 sessions
-    # median(10) = (500+600)/2 = 550
-    # lean ≤ 550: [100..500] = 5 sessions
     assert bl.source == "building"
-    assert bl.lean_n < 8
-    assert bl.sessions_needed > 0
-    assert bl.sessions_needed == 8 - bl.lean_n
+    assert bl.waste_free_n == 9
+    assert bl.sessions_needed == MIN_OWN_SESSIONS - 9
     assert bl.p25 is None
     assert bl.median is None
     assert bl.p75 is None
@@ -263,7 +261,7 @@ def test_cold_start_unavailable_not_blank(tmp_path: Path) -> None:
     assert bl.median is None
     assert bl.p75 is None
     assert bl.lean_n == 0
-    assert bl.sessions_needed == 8
+    assert bl.sessions_needed == MIN_OWN_SESSIONS
 
 
 # ---------------------------------------------------------------------------
@@ -271,17 +269,36 @@ def test_cold_start_unavailable_not_blank(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_corpus_fallback_opt_in(tmp_path: Path) -> None:
-    """Zero sessions + corpus_fallback=True → source='corpus', B2 stats returned."""
+def test_nothing_is_borrowed_from_the_bundled_table(tmp_path: Path) -> None:
+    """Zero sessions: no bundled statistic is returned and the 'corpus' source does not exist."""
     db_path = _make_test_db(tmp_path, {"debug-fix": []})
-    state = compute_self_baselines(db_path, _B2, corpus_fallback=True)
-    bl = state.by_type["debug-fix"]
+    assert _B2["types"]["debug-fix"]["p25"]  # control: the bundled table does have a band
+    with pytest.raises(TypeError):
+        compute_self_baselines(db_path, _B2, corpus_fallback=True)  # type: ignore[call-arg]
+    state = compute_self_baselines(db_path, _B2)
+    assert {tb.source for tb in state.by_type.values()} == {"building"}
+    assert all(tb.p25 is None and tb.median is None for tb in state.by_type.values())
 
-    assert bl.source == "corpus"
-    # p25/median/p75 should match the B2 values for debug-fix.
-    assert bl.p25 == _B2["types"]["debug-fix"]["p25"]
-    assert bl.median == _B2["types"]["debug-fix"]["median"]
-    assert bl.p75 == _B2["types"]["debug-fix"]["p75"]
+
+def test_activation_needs_ten_of_your_own_sessions(tmp_path: Path) -> None:
+    """The 10th waste-free session of a type switches it from building to your own baseline."""
+    nine = _make_test_db(
+        tmp_path, {"debug-fix": _waste_free_sessions(list(range(100, 1000, 100)))}, db_name="n9.db"
+    )
+    ten = _make_test_db(
+        tmp_path, {"debug-fix": _waste_free_sessions(list(range(100, 1100, 100)))}, db_name="n10.db"
+    )
+    assert compute_self_baselines(nine, _B2).by_type["debug-fix"].source == "building"
+    assert compute_self_baselines(ten, _B2).by_type["debug-fix"].source == "self"
+
+
+def test_building_state_without_a_store_is_all_building() -> None:
+    state = building_state(_B2)
+    assert set(state.by_type) == set(_B2["scope_gates"])
+    for tb in state.by_type.values():
+        assert tb.source == "building" and tb.waste_free_n == 0 and tb.p25 is None
+        assert tb.sessions_needed == MIN_OWN_SESSIONS
+        assert "0/10" in tb.domain_of_validity
 
 
 # ---------------------------------------------------------------------------
@@ -466,17 +483,8 @@ def test_domain_of_validity_states_source(tmp_path: Path) -> None:
     bl_building = compute_self_baselines(db_building, _B2).by_type["debug-fix"]
     assert bl_building.source == "building"
     dov_building = bl_building.domain_of_validity
-    assert "Building your baseline" in dov_building
-    assert "need" in dov_building
-    assert str(bl_building.sessions_needed) in dov_building
-
-    # --- 'corpus' ---
-    db_corpus = _make_test_db(tmp_path, {"debug-fix": []}, db_name="corpus.db")
-    bl_corpus = compute_self_baselines(db_corpus, _B2, corpus_fallback=True).by_type["debug-fix"]
-    assert bl_corpus.source == "corpus"
-    # TOKEN_DOMAIN_OF_VALIDITY contains "infra" (from "infra/ML-ops corpus").
-    dov_corpus = bl_corpus.domain_of_validity.lower()
-    assert "infra" in dov_corpus
+    assert "Building your debug-fix baseline (0/10" in dov_building
+    assert "No token verdict until then" in dov_building
 
 
 # ---------------------------------------------------------------------------

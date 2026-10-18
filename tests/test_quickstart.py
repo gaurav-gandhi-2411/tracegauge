@@ -62,16 +62,18 @@ def test_quickstart_shows_a_verdict_a_waste_finding_with_proof_and_the_breakdown
     monkeypatch, capsys
 ):
     # Regression for the rebuilt baseline raising the research-recon gate above the old 50-turn
-    # sample: quickstart printed UNAVAILABLE / 0 waste events and no test noticed.
+    # sample: quickstart printed UNAVAILABLE / 0 waste events and no test noticed. The token
+    # axis now says building (0/10) by design; the waste finding is what must stay visible.
     monkeypatch.setattr("sys.argv", ["tracegauge", "quickstart"])
     with pytest.raises(SystemExit) as exc:
         cli.main()
     assert exc.value.code == 0
     out = capsys.readouterr().out
     token_section = out.split("TRAJECTORY QUALITY")[0]
-    assert "Verdict:     UNAVAILABLE" not in token_section
+    # No sessions of the user's own yet: "building (0/10)", and no verdict from a bundled table.
+    assert "building (0/10)" in token_section
     assert "Session scope too small" not in token_section
-    assert any(v in token_section for v in ("within_band", "above_p75", "below_p25"))
+    assert not any(v in token_section for v in ("within_band", "above_p75", "below_p25"))
     assert "Events:  0 detected" not in out
     assert "REPEATED-FAILED-RETRY" in out
     assert "turns:" in out  # proof turns are attached to the event

@@ -21,7 +21,7 @@ Three-axis efficiency scoring for Claude Code sessions — token economy, trajec
 
 tracegauge is feature-complete — the current release bundles the full validated toolchain (B1–B5 research arc + every shipped phase):
 
-- **Self-baseline token scoring** — your sessions are scored against *your own* lean, waste-free sessions per task type, not a one-size-fits-all corpus. Falls back to the bundled reference corpus until your self-baseline activates.
+- **Self-baseline token scoring** — your sessions are scored against *your own* lean, waste-free sessions per task type, not a one-size-fits-all corpus. A task type needs 10 of your own waste-free sessions before it gets a token verdict; until then it shows `building (n/10)`, and no verdict is borrowed from a bundled table or from another population.
 - **Dollar cost attribution** — six reconciling buckets (B1–B6) that split every billed token into where the money actually went; token% and cost% shown side by side so the cache-read divergence (lots of tokens, little cost) is visible.
 - **Deterministic waste detection** — frozen, observable-invariant detectors (repeated-failed-retry, redundant-read) with proof turns and per-event wasted cost. No LLM judgment, no false-positive guessing.
 - **Trajectory judge** — purposefulness verdict from a local Ollama model ($0, GPU) *or* an opt-in API judge that sends snippets to your model provider only on explicit per-session consent. Renders UNAVAILABLE as a complete, expected state when no judge is configured.
@@ -54,7 +54,7 @@ Two commands. Scores a bundled sample Claude Code session (token economy, determ
 
 Read this before installing. These are not caveats to hide — they're the honest picture of what the tool measures and where the calibration comes from.
 
-**Corpus caveat (token baselines).** The bundled token economy baselines are derived from 71 Claude Code sessions of one developer (not quality-gated; each API response's usage counted once; listed by id and hash in `eval/manifest.json`, which holds no session text, so the baseline is the maintainer's unpublished local measurement), heavy on infrastructure and agent-orchestration work. Four task types have a band; feature-build (8 sessions, below the minimum of 10) has none yet. B5 generalization validation on 1,053 SWE-chat CC sessions (58 attributed developers plus 281 sessions with no user_id) found the generalizable repeated-failed-retry rate is ~1.4% — versus 6.6% in the calibration pool (the maintainer's unpublished local measurement), which is a high-waste infra outlier. A developer doing ordinary coding work may score below-band on the token axis without being inefficient; the baseline encodes one developer's typical heavy infra and agent-orchestration work (it is not filtered for quality), not a universal reference.
+**Corpus caveat (the one-developer table).** The bundled one-developer table ("reference: 1 developer"; it is no longer shown as a verdict, and serves only as the live alarm's fallback and as the upper bound of a task type's scope floor) is derived from 71 Claude Code sessions of one developer (not quality-gated; each API response's usage counted once; listed by id and hash in `eval/manifest.json`, which holds no session text, so the baseline is the maintainer's unpublished local measurement), heavy on infrastructure and agent-orchestration work. Four task types have a band; feature-build (8 sessions, below the minimum of 10) has none yet. B5 generalization validation on 1,053 SWE-chat CC sessions (58 attributed developers plus 281 sessions with no user_id) found the generalizable repeated-failed-retry rate is ~1.4% — versus 6.6% in the calibration pool (the maintainer's unpublished local measurement), which is a high-waste infra outlier. A developer doing ordinary coding work may score below-band on the token axis without being inefficient; the baseline encodes one developer's typical heavy infra and agent-orchestration work (it is not filtered for quality), not a universal reference.
 
 > Contains information from [SALT-NLP/SWE-chat](https://huggingface.co/datasets/SALT-NLP/SWE-chat) (Baumann et al., 2026, arXiv:2604.20779), made available under the [Open Data Commons Attribution License (ODC-BY) 1.0](https://opendatacommons.org/licenses/by/1-0/). See [DATA_SOURCES.md](../DATA_SOURCES.md) for the full attribution and what was derived from it.
 
@@ -74,11 +74,11 @@ No composite score. Three independent labeled signals, each with its own domain 
 
 ### Token economy
 
-Compares the session's real token count (AI turns only; cache-read inflation removed) against the p25–p75 band for the same task type (ml-eval, debug-fix, infra-deploy, research-recon, feature-build; feature-build has no bundled band yet — 8 sessions, minimum 10 — so its token verdict is `unavailable` unless your own self-baseline for it is active). Verdicts: `above_p75`, `within_band`, `below_p25`, `unavailable`.
+Compares the session's real token count (AI turns only; cache-read inflation removed) against the p25–p75 band of YOUR OWN lean, waste-free sessions of the same task type (ml-eval, debug-fix, infra-deploy, research-recon, feature-build). The band exists once you have 10 such sessions of the type (and its lean half is stable); before that the verdict is `unavailable` and the text says `building (n/10)`. Verdicts: `above_p75`, `within_band`, `below_p25`, `unavailable`.
 
 `unavailable` when the session is below the per-type p10 turn floor (scope gate) — the session is too short relative to the reference mass to produce a meaningful comparison. Not an error.
 
-**Domain of validity:** calibrated to a high-waste infra/ML-ops corpus (one developer, 71 sessions, not quality-gated). Interpret alongside the trajectory verdict.
+**Domain of validity:** relative to your own lean sessions of the same task type, not to quality-certified runs and not to anyone else's habits. Interpret alongside the trajectory verdict.
 
 ### Trajectory quality
 

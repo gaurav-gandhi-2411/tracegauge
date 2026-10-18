@@ -186,6 +186,7 @@ def test_building_gives_unavailable_with_building_dov() -> None:
         "feature-build",
         source="building",
         lean_n=3,
+        waste_free_n=3,
         sessions_needed=5,
         scope_floor=30,
     )
@@ -195,7 +196,8 @@ def test_building_gives_unavailable_with_building_dov() -> None:
     assert result.baseline_source == "building"
     assert result.band_verdict == "unavailable"
     assert result.p25 is None and result.p75 is None
-    assert "Building your" in result.interpretation
+    assert result.interpretation.startswith("building (3/10)")
+    assert "borrowed" in result.interpretation
     assert (
         "Building" in result.token_domain_of_validity
         or "building" in result.token_domain_of_validity.lower()

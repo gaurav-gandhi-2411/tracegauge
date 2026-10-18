@@ -324,6 +324,25 @@ def _db_legacy_count(db_path: Path) -> int:
         return 0
 
 
+def _self_baseline_for(store_conn: object, baselines: dict):
+    """The user's own baseline state for the token verdict of a session being scored.
+
+    With a store it is computed (or read from its cache) from the user's stored sessions; without
+    one every task type is ``building`` (0/10). Either way no verdict is borrowed from a bundled
+    table. A failure reading the store falls back to the empty state, never to a bundled verdict.
+    """
+    from tracegauge.self_baseline import building_state, load_or_compute  # noqa: PLC0415
+
+    if store_conn is not None:
+        try:
+            db_file = store_conn.execute("PRAGMA database_list").fetchone()[2]  # type: ignore[attr-defined]
+            if db_file:
+                return load_or_compute(Path(db_file), baselines)
+        except Exception:
+            pass
+    return building_state(baselines)
+
+
 def score_path(
     path: Path,
     baselines: dict,
@@ -384,6 +403,7 @@ def score_path(
     result = score_session(
         record,
         baselines,
+        self_baseline=_self_baseline_for(store_conn, baselines),
         judge_entry=judge_entry,
         waste_entry=waste_entry,
         session_cost=session_cost,
@@ -493,6 +513,7 @@ def _score_path_with_api_judge(
     result = score_session(
         record,
         baselines,
+        self_baseline=_self_baseline_for(store_conn, baselines),
         judge_entry=judge_entry,
         waste_entry=waste_entry,
         session_cost=session_cost,

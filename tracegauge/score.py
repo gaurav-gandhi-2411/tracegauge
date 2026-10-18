@@ -29,6 +29,7 @@ from typing import TYPE_CHECKING, Any
 from tracegauge.alarm_baseline import dominant_model
 from tracegauge.baselines import compute_real_tokens, load_baselines
 from tracegauge.classify import classify_session
+from tracegauge.self_baseline import MIN_OWN_SESSIONS
 from tracegauge.web.cost_format import cost_is_known
 
 if TYPE_CHECKING:
@@ -153,7 +154,7 @@ class ThreeAxisResult:
     band_verdict: str  # "within_band" | "above_p75" | "below_p25" | "unavailable"
     interpretation: str
     token_domain_of_validity: str
-    baseline_source: str  # "self" | "building" | "corpus" | "b2_corpus"
+    baseline_source: str  # "self" | "building" | "b2_corpus" (library use without a state)
 
     # --- trajectory axis ---
     judge_verdict: str | None
@@ -507,8 +508,10 @@ def score_session(
         Optional per-user self-baseline state from tracegauge.self_baseline.load_or_compute().
         When provided the token axis scores against the user's own lean reference
         (source='self') or shows the cold-start building state.
-        Falls back to the B2 corpus baseline when not provided or when the type is
-        still building and corpus_fallback was not enabled.
+        A type that is still building has NO token verdict ("building (n/10)"): nothing is
+        borrowed from a bundled table. Only when no state is passed at all (library use, tests,
+        evals) is the raw one-developer table result returned; the CLI, the watcher and the
+        dashboard always pass a state.
     session_cost:
         Optional pre-computed session cost from tracegauge.cost.compute_session_cost.
         When provided, session_cost_usd and cost_approximate are populated on the result.
@@ -595,15 +598,23 @@ def score_session(
         tok_baseline_avail = False
         tok_p25, tok_median, tok_p75 = None, None, None
         tok_band = "unavailable"
-        tok_interp = (
-            f"Building your {task_type} self-baseline: need {type_bl.sessions_needed} more "
-            "waste-free sessions. Trajectory verdict available in the meantime."
-        )
+        if type_bl.waste_free_n >= MIN_OWN_SESSIONS:
+            # Enough sessions, but their band is too wide to trust yet (stability guard): say so.
+            tok_interp = f"building: {type_bl.domain_of_validity}"
+        else:
+            tok_interp = (
+                f"building ({type_bl.waste_free_n}/{MIN_OWN_SESSIONS}): a token verdict compares a "
+                f"session with your own {task_type} sessions and needs {MIN_OWN_SESSIONS} of them. "
+                "No verdict is borrowed from another population. The waste and trajectory readings "
+                "do not depend on it."
+            )
         tok_dov = type_bl.domain_of_validity
         tok_source = "building"
 
     else:
-        # Corpus fallback (type_bl.source == 'corpus') or no self-baseline → B2 result.
+        # No self-baseline state was passed (library use, tests, evals): the raw bundled-table
+        # result. The CLI, the watcher and the dashboard always pass a state, so a product path
+        # never reaches this branch.
         tok_scope = impl_result.scope_status
         tok_baseline_avail = impl_result.baseline_available
         tok_p25, tok_median, tok_p75 = impl_result.p25, impl_result.median, impl_result.p75

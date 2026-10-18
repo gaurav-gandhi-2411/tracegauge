@@ -83,7 +83,8 @@ def test_quickstart_runs_and_shows_finding_without_extras(tmp_path: Path) -> Non
     r = _run_cli(tmp_path, "quickstart")
     assert r.returncode == 0, r.stderr
     assert "REPEATED-FAILED-RETRY" in r.stdout
-    assert "Verdict:     UNAVAILABLE" not in r.stdout.split("TRAJECTORY QUALITY")[0]
+    # A first-run user has no sessions of their own: the token axis says so, not a borrowed verdict.
+    assert "building (0/10)" in r.stdout.split("TRAJECTORY QUALITY")[0]
 
 
 def test_score_runs_without_extras(tmp_path: Path) -> None:

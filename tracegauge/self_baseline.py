@@ -18,21 +18,25 @@ import statistics
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from tracegauge.score import TOKEN_DOMAIN_OF_VALIDITY
-
 # Never let the computed scope floor fall below this; a handful of very-short
 # sessions would otherwise push the floor so low it stops gatekeeping anything.
 MIN_MEANINGFUL_TURNS: int = 20
+
+# A task type gets a token verdict only from the user's own sessions: at least this many of their
+# own waste-free, in-scope sessions of the type (shown as "building (n/10)" until then), and a
+# lean subset (lower half after the p90 cap) of at least MIN_LEAN_N sessions to band them.
+MIN_OWN_SESSIONS: int = 10
+MIN_LEAN_N: int = 5
 
 
 @dataclass
 class TypeBaseline:
     task_type: str
-    source: str  # 'self' | 'building' | 'corpus'
+    source: str  # 'self' | 'building'
     p25: int | None  # None when building
     median: int | None  # None when building
     p75: int | None  # None when building
-    lean_n: int  # size of lean subset (0 when building/corpus)
+    lean_n: int  # size of lean subset (0 when building)
     waste_free_n: int  # waste-free sessions with real_tokens > 0
     sessions_needed: int  # how many more lean-subset sessions needed (0 when active)
     scope_floor: int  # effective turns floor for this type
@@ -92,6 +96,7 @@ def _build_domain_of_validity(
     sessions_needed: int,
     min_lean_n: int,
     scope_floor: int,
+    own_n: int = 0,
 ) -> str:
     if source == "self":
         return (
@@ -100,14 +105,12 @@ def _build_domain_of_validity(
             "Relative-to-your-own-baseline; not an absolute efficiency verdict. "
             f"Baseline: self / scope floor: {scope_floor} turns."
         )
-    if source == "building":
-        return (
-            f"Building your baseline: need {sessions_needed} more waste-free {task_type} "
-            f"sessions (have {lean_n} in lean subset, need {min_lean_n}). "
-            f"Scope floor: {scope_floor} turns."
-        )
-    # source == 'corpus'
-    return TOKEN_DOMAIN_OF_VALIDITY
+    # source == 'building': no verdict is borrowed from any other population.
+    return (
+        f"Building your {task_type} baseline ({min(own_n, MIN_OWN_SESSIONS)}/{MIN_OWN_SESSIONS} "
+        "of your own waste-free sessions of this type). No token verdict until then. "
+        f"Scope floor: {scope_floor} turns."
+    )
 
 
 def compute_baseline_cost_band(
@@ -202,11 +205,11 @@ def compute_self_baselines(
     db_path: Path | str,
     b2_baselines: dict,
     *,
-    min_lean_n: int = 8,
+    min_lean_n: int = MIN_LEAN_N,
     outlier_cap_pct: float = 0.90,
     lean_fraction: float = 0.50,
     min_meaningful_turns: int = MIN_MEANINGFUL_TURNS,
-    corpus_fallback: bool = False,
+    min_sessions: int = MIN_OWN_SESSIONS,
 ) -> SelfBaselineState:
     """Compute per-user, per-type lean-subset self-baselines from the SQLite store.
 
@@ -225,8 +228,8 @@ def compute_self_baselines(
         (default 0.50 → lower half).
     min_meaningful_turns:
         Floor on the effective scope floor; prevents near-zero floors on sparse data.
-    corpus_fallback:
-        When True and a type is still 'building', use corpus (B2) baselines instead.
+    min_sessions:
+        Minimum number of the user's own waste-free, in-scope sessions of the type.
 
     Returns
     -------
@@ -243,7 +246,6 @@ def compute_self_baselines(
     cur_sql, cur_params = _current_adapter_clause(conn)
 
     scope_gates: dict = b2_baselines.get("scope_gates", {})
-    types_info: dict = b2_baselines.get("types", {})
 
     for task_type in b2_baselines.get("scope_gates", {}):
         # An inactive corpus cell (too few sessions to band) ships p10_turns=None, which
@@ -299,23 +301,21 @@ def compute_self_baselines(
 
         lean_n = len(lean_subset)
 
-        if lean_n < min_lean_n:
-            sessions_needed = min_lean_n - lean_n
-
-            if corpus_fallback and types_info.get(task_type, {}).get("available"):
-                ti = types_info[task_type]
-                source = "corpus"
-                p25 = ti.get("p25")
-                median = ti.get("median")
-                p75 = ti.get("p75")
-            else:
-                source = "building"
-                p25 = None
-                median = None
-                p75 = None
+        if waste_free_n < min_sessions or lean_n < min_lean_n:
+            sessions_needed = max(min_sessions - waste_free_n, min_lean_n - lean_n, 1)
+            source = "building"
+            p25 = None
+            median = None
+            p75 = None
 
             dov = _build_domain_of_validity(
-                source, task_type, lean_n, sessions_needed, min_lean_n, scope_floor
+                source,
+                task_type,
+                lean_n,
+                sessions_needed,
+                min_lean_n,
+                scope_floor,
+                own_n=waste_free_n,
             )
             state.by_type[task_type] = TypeBaseline(
                 task_type=task_type,
@@ -524,10 +524,40 @@ def load_or_compute(
     return state
 
 
+def building_state(b2_baselines: dict) -> SelfBaselineState:
+    """The state of a user with no sessions of their own: every task type is ``building`` (0/10).
+
+    Used where no store is available (for example ``tracegauge score FILE`` with no database), so
+    the token verdict is ``unavailable`` rather than borrowed from the bundled tables. The scope
+    floor is the bundled p10 turn floor of the type, as for any type with fewer than 10 sessions.
+    """
+    state = SelfBaselineState()
+    for task_type, gate in b2_baselines.get("scope_gates", {}).items():
+        floor = max((gate or {}).get("p10_turns") or MIN_MEANINGFUL_TURNS, MIN_MEANINGFUL_TURNS)
+        state.by_type[task_type] = TypeBaseline(
+            task_type=task_type,
+            source="building",
+            p25=None,
+            median=None,
+            p75=None,
+            lean_n=0,
+            waste_free_n=0,
+            sessions_needed=MIN_OWN_SESSIONS,
+            scope_floor=floor,
+            domain_of_validity=_build_domain_of_validity(
+                "building", task_type, 0, MIN_OWN_SESSIONS, MIN_LEAN_N, floor, own_n=0
+            ),
+        )
+    return state
+
+
 __all__ = [
+    "MIN_LEAN_N",
     "MIN_MEANINGFUL_TURNS",
+    "MIN_OWN_SESSIONS",
     "TypeBaseline",
     "SelfBaselineState",
+    "building_state",
     "compute_baseline_cost_band",
     "compute_self_baselines",
     "load_or_compute",
