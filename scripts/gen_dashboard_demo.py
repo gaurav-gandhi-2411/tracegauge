@@ -25,8 +25,8 @@ writes ``<output-dir>/projects/<project>/<session-id>.jsonl`` (the layout ``--cc
 * ``redundant-reads``  files re-read unchanged (REDUNDANT-READ waste events)
 * three more healthy sessions on other days so the trends page has a history
 
-``output-heavy`` also has ``<sid>/subagents/agent-*.jsonl`` (an executor, a verifier and a
-general-purpose agent). The ``agent-*.meta.json`` files that name the agent type are not written:
+``output-heavy`` also has ``<sid>/subagents/agent-*.jsonl`` (three subagent
+transcripts). The ``agent-*.meta.json`` files that name the agent type are not written:
 this build of tracegauge does not read them.
 """
 
@@ -341,7 +341,7 @@ def generate(out_dir: Path) -> dict[str, Path]:
         written[label] = path
         if label == "output-heavy":
             sub = path.with_suffix("") / "subagents"
-            for agent, turns in (("executor", 9), ("verifier", 6), ("general-purpose", 4)):
+            for turns in (9, 6, 4):  # three subagent transcripts of different lengths
                 agent_id = f"a{rng.getrandbits(48):012x}"
                 _write_jsonl(sub / f"agent-{agent_id}.jsonl", _subagent_records(rng, start, turns))
 
