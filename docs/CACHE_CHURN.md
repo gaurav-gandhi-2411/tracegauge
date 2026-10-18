@@ -168,6 +168,68 @@ The shipped detector therefore labels every such event `UNEXPLAINED`, prices it,
 cause for it. Read an `UNEXPLAINED` figure as "the cache read collapsed and nothing recorded in the
 transcript says why", not as a defect of any particular setting.
 
+## Controlled runs
+
+Two small runs of unmodified `claude -p` (Claude Code 2.1.302 for the second, Sonnet 5.5, a Claude
+subscription login, a separate working directory so no other session shares the cache) were made
+to see what the transcript lets a rule say. Both are the maintainer's unpublished local
+measurements: one user, one machine, one run each, 16 calls in all, not reproducible from this
+repository. Dollars are the cache numbers priced with the tool's own price table, not a bill.
+
+**Lifetime (6 calls, 2026-10-11).** Two series of three calls on the same session: a seed, a
+resume inside the lifetime, a resume past it. On the 5-minute tier (`CLAUDE_CODE_PROMPT_CACHE_TTL=5m`)
+the resume after 6 minutes read 16,280 tokens (the system and tool prefix only) and wrote 53,753; on
+the 1-hour tier the resume after 65 minutes read 16,155 and wrote 49,099. So the `TTL_GAP` rule
+reproduced in 2 of 2 series, and the lifetime in force was the one the `usage.cache_creation` split
+reported.
+
+**Settings changed inside the lifetime (10 calls, 2026-10-18).** One session, resumed nine times,
+each call about 41 to 44 seconds after the previous one (start to start). The only difference we
+introduced from the call before is the one listed. Every resume also adds a reminder attachment and
+runs the maintainer's own session-start hook, whose text changes, so the conditions are similar,
+not identical, and each variant was run once. "Cache read before" is the previous request's read.
+
+| Call | Change | Cache read before → after | Written | Read share of previous prefix | Collapse? |
+|---|---|---|---|---|---|
+| 2 | none (control A) | 16,405 → 45,247 | 19,369 | 0.70 | partial, see below |
+| 3 | none (control B) | 45,247 → 64,479 | 296 | 1.00 | no |
+| 4 | plan mode on | 64,479 → 64,638 | 2,932 | 1.00 | no |
+| 5 | plan mode off | 64,638 → 64,797 | 2,969 | 0.96 | no |
+| 6 | `MAX_THINKING_TOKENS` 8000 (no effect on the request, see below) | 64,797 → 67,592 | 333 | 1.00 | no |
+| 7 | `MAX_THINKING_TOKENS` 0 (no effect on the request) | 67,592 → 67,788 | 296 | 1.00 | no |
+| 8 | hook output added | 67,788 → 67,947 | 318 | 1.00 | no |
+| 9 | hook output changed | 67,947 → 68,106 | 347 | 1.00 | no |
+| 10 | none (control C; same settings as call 9) | 68,106 → 68,287 | 354 | 1.00 | no |
+
+Findings:
+
+* None of the changes that were actually made collapsed the read (plan mode on and off, a hook
+  output added and then changed; one run each, one machine, short gaps). The transcript shows a
+  `plan_mode` / `plan_mode_exit` attachment and a `hook_success` attachment between the turns, and
+  the request shape hash was identical in all ten calls, so these changes appended text to the
+  conversation rather than altering the prefix; that is consistent with the cache staying warm, not
+  a tested mechanism.
+* The thinking toggle did not change the request: the transcript's request record shows the same
+  adaptive thinking parameter in all ten calls, so that row says nothing about thinking. Whether a
+  real thinking change collapses the read was **not** tested.
+* The first resume of a `-p` session read only 70% of the previous prefix and wrote 19,369 tokens
+  again (about $0.082, against about $0.008 for the controls). It happened in both series of the
+  first run too (read 44,473 of 62,873 and 44,348 of 62,748, tokens), so 3 of 3 first resumes. The
+  transcript carries no marker that tells it apart from the controls that followed, and 0.70 is above
+  the detector's 0.5 read-drop threshold, so it is not counted as an event and is not an
+  `UNEXPLAINED` event. It is described here because it is the largest rewrite the runs produced that
+  no marker explains (the 5-minute lifetime expiry above rewrote more, but that one has its cause);
+  it was seen only on `--resume` of a `-p` session and says nothing about interactive use.
+* A cause rule needs a mechanism that reproduces in 2 of 2 runs and is identifiable from transcript
+  markers. None met that bar, so no cause rule was added and every such event stays `UNEXPLAINED`.
+
+**A marker worth knowing about.** Claude Code 2.1.300 and later write an `api-request` record per
+request with a hash of the request's shape (system prompt, tools, parameters) and of each message.
+If those records become common, a change in the shape hash between two turns would identify a
+prefix change the older transcripts cannot show. Of the maintainer's 77 local main transcripts only 9
+(versions 2.1.300 to 2.1.302, one of them the controlled run above) carry them, and none of those
+has an `UNEXPLAINED` event, so there is nothing yet to test a rule on and none is shipped.
+
 ## Validation status
 
 * **Measured from usage fields:** whether an event happened, its tokens and its dollars are read
@@ -175,8 +237,12 @@ transcript says why", not as a defect of any particular setting.
 * **Not yet validated:** the *cause*. `TTL_GAP`, `MODEL_SWITCH` and `COMPACTION` are rules applied to
   markers and timestamps. On the maintainer's snapshot all 40 eligible post-compaction turns were events
   and the event rate steps sharply at the documented lifetimes (the maintainer's unpublished local
-  measurement), which is consistent with the rules but is not a controlled test. A scripted
-  controlled run for the TTL cause and a labelled sample for the other causes are still to be done.
+  measurement), which is consistent with the rules but is not a controlled test. The `TTL_GAP` cause
+  has a small controlled run behind it (next section); a labelled sample for the other causes is still
+  to be done.
+* **Controlled runs (the maintainer's unpublished local measurement, 16 calls in total):** see
+  [Controlled runs](#controlled-runs) below. They confirm the lifetime rule; the few settings that
+  were changed did not make the cache collapse inside the lifetime (thinking was not really varied).
 * **Single user:** all numbers above come from one person's sessions on one machine. They show that
   the detector fires and what it costs there, not how common churn is for other users.
 * **Tests:** the unit tests use synthetic transcripts with injected gaps, switches and compactions
