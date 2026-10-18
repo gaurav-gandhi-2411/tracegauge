@@ -7,13 +7,11 @@
 {# Coverage headline (self-baseline active) #}
 {% if headline %}
 <div class="metric-box">
-  <strong>Self-baseline active on all 5 task types.</strong>
+  <strong>Self-baseline active on {{ headline.types_active }} of {{ headline.types_total }} task types.</strong>
+  {% if headline.types_active == 0 %}(still building from your own sessions; see baseline status){% endif %}
   Content sessions scored vs your own lean runs:
   <span class="metric-highlight">{{ headline.content_self_scored }} / {{ headline.content_sessions }}
     ({{ headline.content_self_pct }}%)</span>
-  <span class="metric-old">&nbsp;&middot;&nbsp; Pre-self-baseline (B2 corpus):
-    {{ headline.b2_content_scored }}/{{ headline.b2_content_total }}
-    ({{ headline.b2_content_scored_pct }}%)</span>
   <br>
   <span style="font-size:0.82em; color:var(--graphite); margin-top:2px; display:inline-block;">
     Empty/stub sessions (no work product): {{ headline.empty_stubs }} of {{ headline.total }} total
