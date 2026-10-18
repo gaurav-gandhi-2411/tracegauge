@@ -25,11 +25,7 @@ from tracegauge.intelligence.cache import get_or_compute_intelligence
 from tracegauge.intelligence.chat import ChatApiConfig, ask_api, ask_local
 from tracegauge.legacy import LEGACY_ROW_LABEL, is_legacy_row
 from tracegauge.patterns_extra import PatternsExtraMissing, require_patterns_extra
-from tracegauge.self_baseline import (
-    SelfBaselineState,
-    compute_baseline_cost_band,
-    load_for_scoring,
-)
+from tracegauge.self_baseline import SelfBaselineState, compute_baseline_cost_band, load_or_compute
 from tracegauge.store import (
     _SORT_COLUMN_WHITELIST,
     TrajectoryRenderState,
@@ -318,7 +314,7 @@ def create_app(config: ServerConfig) -> Flask:
 
     def get_self_bl():
         if config.db_path is not None:
-            return load_for_scoring(config.db_path, _b2)
+            return load_or_compute(config.db_path, _b2)
         return None
 
     # -----------------------------------------------------------------------
