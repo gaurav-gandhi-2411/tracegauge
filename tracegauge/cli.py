@@ -1329,7 +1329,7 @@ def _print_cost_subagents(report: PeriodCostReport) -> None:
             if t.share_of_total_usd is not None
             else ""
         )
-        print(f"  {t.type:<24}  {t.files} file(s), {t.tokens:,} billed tokens, {amount}{share}")
+        print(f"  {t.type:<24}  {t.files} file(s), {t.real_tokens:,} tokens, {amount}{share}")
 
 
 def _print_cost_roi(report: PeriodCostReport, plan_config: str | None) -> None:

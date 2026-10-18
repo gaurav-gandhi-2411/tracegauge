@@ -114,6 +114,9 @@ class SubagentTypeCost:
     # False when none of the type's usage could be priced: usd is then a placeholder 0.0 and
     # must be shown as unpriced, never as $0.00.
     usd_known: bool = True
+    # Real tokens (input + cache writes + output, cache re-reads excluded): the unit of the
+    # session's "Includes N subagent transcript(s)" line and of the token-economy axis.
+    real_tokens: int = 0
 
 
 @dataclass
@@ -659,6 +662,7 @@ def _subagent_by_type(
         acc = out.setdefault(key, SubagentTypeCost(0.0, False, 0, 0, 0, usd_known=False))
         acc.usd += tc.total_usd
         acc.tokens += t.token_count_input + t.token_count_output
+        acc.real_tokens += t.token_count_input - t.cache_read + t.token_count_output
         acc.requests += t.request_count
         has_tokens = bool(t.token_count_input or t.token_count_output)
         if tc.priced and has_tokens:

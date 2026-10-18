@@ -152,6 +152,7 @@ def _period_subagents_payload(sub: PeriodSubagents) -> dict[str, Any]:
                 "files": t.files,
                 "requests": t.requests,
                 "tokens": t.tokens,
+                "real_tokens": t.real_tokens,
                 "usd": t.usd,
                 "usd_is_floor": t.usd_is_floor or t.usd is None,
                 "share_of_total_usd": t.share_of_total_usd,

@@ -66,6 +66,7 @@ class SubagentTypePeriod:
     files: int = 0
     requests: int = 0
     tokens: int = 0  # billed tokens
+    real_tokens: int = 0
     usd: float | None = None  # None until some session priced this type
     usd_is_floor: bool = False
     share_of_total_usd: float | None = None  # of the recorded sessions' spend
@@ -173,6 +174,7 @@ def _period_subagents(rows: list[sqlite3.Row]) -> PeriodSubagents:
                     int(e["files"]),
                     int(e["requests"]),
                     int(e["tokens"]),
+                    int(e["real_tokens"]),
                     None if e["usd"] is None else float(e["usd"]),
                     bool(e["usd_is_floor"]),
                 )
@@ -186,11 +188,12 @@ def _period_subagents(rows: list[sqlite3.Row]) -> PeriodSubagents:
         out.usd += float(r["subagent_cost_usd"] or 0.0)
         out.subagent_real_tokens += int(r["subagent_tokens"] or 0)
         out.recorded_real_tokens += int(r["real_tokens"] or 0) + int(r["subagent_tokens"] or 0)
-        for e_type, e_files, e_requests, e_tokens, e_usd, e_floor in entries:
+        for e_type, e_files, e_requests, e_tokens, e_real, e_usd, e_floor in entries:
             t = types.setdefault(e_type, SubagentTypePeriod(type=e_type))
             t.files += e_files
             t.requests += e_requests
             t.tokens += e_tokens
+            t.real_tokens += e_real
             if e_usd is not None:
                 t.usd = (t.usd or 0.0) + e_usd
             if e_floor:

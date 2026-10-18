@@ -307,6 +307,7 @@ def build_subagents_summary(session_cost: SessionCost | None) -> dict[str, Any]:
                 "files": tc.files,
                 "requests": tc.requests,
                 "tokens": tc.tokens,
+                "real_tokens": tc.real_tokens,
                 "usd": usd,
                 "usd_is_floor": tc.usd_is_floor or not tc.usd_known,
                 "share_of_session_usd": _share(usd, total),

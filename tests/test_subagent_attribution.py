@@ -33,6 +33,7 @@ BY_TYPE_KEYS = {
     "files",
     "requests",
     "tokens",
+    "real_tokens",
     "usd",
     "usd_is_floor",
     "share_of_session_usd",
@@ -368,7 +369,16 @@ def test_cost_command_text_and_json(
     assert (sub["sessions_recorded"], sub["sessions_not_recorded"]) == (2, 1)
     assert all(
         set(t)
-        == {"type", "files", "requests", "tokens", "usd", "usd_is_floor", "share_of_total_usd"}
+        == {
+            "type",
+            "files",
+            "requests",
+            "tokens",
+            "real_tokens",
+            "usd",
+            "usd_is_floor",
+            "share_of_total_usd",
+        }
         for t in sub["by_type"]
     )
     assert "subagents" in doc and "by_project" in doc  # existing keys are still there

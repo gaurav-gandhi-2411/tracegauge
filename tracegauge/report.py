@@ -350,13 +350,13 @@ def format_subagent_lines(
         out.append(
             f"         subagents: {share * 100:.0f}% of this session's "
             f"{format_cost_usd(session_usd)}{' (priced part)' if partial else ''}; "
-            "per-type tokens are billed tokens"
+            "per-type tokens are real tokens, as above"
         )
     for row in by_type[:_MAX_SUBAGENT_TYPE_LINES]:
         row_share = row["share_of_session_usd"]
         share_txt = f", {row_share * 100:.0f}% of session" if row_share is not None else ""
         out.append(
-            f"           {row['type']}: {row['files']} file(s), {row['tokens']:,} tokens, "
+            f"           {row['type']}: {row['files']} file(s), {row['real_tokens']:,} tokens, "
             f"{_fmt_sub_usd(row['usd'], row['usd_is_floor'])}{share_txt}"
         )
     if len(by_type) > _MAX_SUBAGENT_TYPE_LINES:
