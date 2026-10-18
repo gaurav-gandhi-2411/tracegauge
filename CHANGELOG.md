@@ -31,12 +31,12 @@ same). Three behaviours change and are listed first.
 
 1. **A token verdict comes from your own sessions only, as a percentile.** A session's token reading is now its
    place among your other in-scope sessions of the same task type: "about the 70th percentile of your 24 debug-fix
-   sessions", labelled `below_p25` / `within_band` / `above_p75` against the nearest-rank p25 and p75 of those
+   sessions", labelled `below_p25` / `within_band` / `above_p75` against the p25 and p75 of those
    sessions. It is active from 10 of them; before that it says `building (n/10)` and the verdict is `unavailable`.
-   Nothing is borrowed from the bundled one-developer table or from any other population, on any surface. Every
+   Nothing is borrowed from the bundled one-developer table or from any other population on the command line, the watcher or the dashboard (a program that calls `score_session` with no state still gets the raw table result, as before). Every
    in-scope session with usage counts once: waste is not a filter, empty stubs (no usage), sessions below your
    scope floor and rows scored by the pre-dedupe accounting do not count, and a session already in the store is
-   not compared with itself. The lean-half selection, the 90th-percentile cap and the stability guard of 0.16.0 are
+   not compared with itself. The cost framing ("cost vs your usual") keeps its own conservative reference of waste-free, lower-half sessions; it is not the token verdict. The lean-half selection, the 90th-percentile cap and the stability guard of 0.16.0 are
    removed (they needed about 17 waste-free sessions, and on the maintainer's 51 sessions left none of the five task types active at the end). Until
    0.16.0 `tracegauge score FILE` compared a session with that bundled table while the watcher and dashboard showed
    no verdict; they now agree, and `score FILE` reads your store for the count (an empty state when there is none).
@@ -48,8 +48,9 @@ same). Three behaviours change and are listed first.
    measurement; the 68 local transcripts minus 17 from three excluded projects), scored in arrival order into a
    scratch store: 2 of 5 task types were active at the end (debug-fix from its 11th session, infra-deploy from its
    12th) and 5 of the 51 sessions got a verdict (2 `below_p25`, 1 `within_band`, 2 `above_p75`); the other 46 were
-   `building` or below the scope floor, because ml-eval (9 in-scope sessions), research-recon (9) and
-   feature-build (2) had too few of their own. See [docs/UPGRADING.md](docs/UPGRADING.md).
+   `building` or below the scope floor: debug-fix and infra-deploy sessions that arrived before those types had
+   10 earlier ones (10 and 11 sessions), and all of ml-eval (10 sessions, 9 in scope), research-recon (9) and
+   feature-build (6 sessions, 2 in scope), which never reached 10 of their own. See [docs/UPGRADING.md](docs/UPGRADING.md).
 2. **The store records each session's turn count, which lets your own baseline activate.** Up to 0.16.0 every
    stored row had `turn_count = 0` (the callers of `upsert_session` never passed it and the helper that backfilled
    it had been removed as unused), so no row ever counted toward a baseline and the dashboard banner counted every
@@ -87,7 +88,7 @@ same). Three behaviours change and are listed first.
 - **How often a session has a finding worth acting on**: [docs/ACTIONABLE_FINDINGS.md](docs/ACTIONABLE_FINDINGS.md)
   (the maintainer's unpublished local measurement: 32 of 47 sessions with priced usage, Wilson 53.8 to 79.6%; 18.7% of 1,051 public
   SWE-chat sessions, developer-cluster bootstrap 13.9 to 27.6%) and a check of the churn cause by three
-  independent language models. Three models of different families (Claude, gpt-oss-120b, qwen3:8b), given only derived numbers and never the detector's label, agreed with its cause label on 158 of 160 sampled events (Fleiss kappa 0.865); this is LLM-consensus agreement with a rule that uses the same facts, not ground truth.
+  three language models. Three models of different families (Claude, gpt-oss-120b, qwen3:8b), given only derived numbers and never the detector's label, agreed with its cause label on 158 of 160 sampled events (Fleiss kappa 0.865); this is LLM-consensus agreement with a rule that uses the same facts, not ground truth.
 - **Controlled cache runs** documented in [docs/CACHE_CHURN.md](docs/CACHE_CHURN.md): plan mode on and off and a
   hook output added then changed did not collapse the cache read inside the lifetime; the thinking toggle did not
   change the request, so it is reported as untested; the first resume of a `-p` session reads about 70% of the
@@ -114,7 +115,7 @@ same). Three behaviours change and are listed first.
 - **Sessions are dated by when they were scored** on the dashboard's trends page, not by the transcript's own
   timestamps, so scoring old sessions in one go shows them all on one date.
 - **The thinking setting was not tested** in the controlled cache runs (the toggle used did not change the request).
-- The live alarm still falls back to the one-developer table when you have fewer than 10 sessions of a type.
+- The live alarm still ends its chain of thresholds at the one-developer table when you have no usable recent sessions of a type; it first tries your own recent sessions.
 - The `tes` names are still removed in 0.18.
 
 ## [0.16.0] - 2026-10-17 — renamed to tracegauge (import package, command, environment variables), relicensed Apache-2.0, cache-churn detector

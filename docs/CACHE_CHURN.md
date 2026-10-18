@@ -240,7 +240,7 @@ has an `UNEXPLAINED` event, so there is nothing yet to test a rule on and none i
   measurement), which is consistent with the rules but is not a controlled test. The `TTL_GAP` cause
   has a small controlled run behind it (next section); a labelled sample for the other causes is still
   to be done.
-* **Cause check by independent readers (LLM-consensus agreement, not ground truth):** on 160 sampled
+* **Cause check by three language models (LLM-consensus agreement, not ground truth):** on 160 sampled
   events three language models, shown only derived numbers and never the detector's label, agreed with the
   detector's cause on 158 (98.8%, Wilson 95.6 to 99.7), Fleiss kappa 0.865. Per judge and per cause below.
   The cards hold the same facts the rules use, so this checks that the rules follow from the documented
@@ -291,8 +291,8 @@ whose gap was hours against a one-hour lifetime. Asked to add a reason for six o
 sample), on four it gave the same reason (on the other two it labelled `TTL_GAP` when asked again, so single answers are not perfectly repeatable): the current request still read part of the prefix from the cache (for
 example 31,740 tokens), which it took to be inconsistent with the whole prefix having expired. The card
 did not say that a short shared prefix (the system prompt, the tool definitions) can still be read while the
-longer conversation part after it is written again, so this is a gap in the card rather than a Claude error. The other
-judges did not stumble on it.
+longer conversation part after it is written again, so this is most likely a gap in the card rather than a Claude error. That rests on the reasons given on four
+cards and was not tested separately; the other judges did not stumble on it.
 
 **The fix and its limit.** One neutral sentence about partial reads was added to the glossary and Claude was re-run
 on the same cards. That re-run was stopped by the system after 60 of the 160 cards (low memory) and has not been

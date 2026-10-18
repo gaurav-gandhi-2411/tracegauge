@@ -31,7 +31,7 @@ the local population; the commands are `tracegauge score <path> --no-judge --jso
 | Population (sessions with priced usage) | n | T = $0.10 | **T = $0.50** | T = $1 | T = $5 |
 |---|---|---|---|---|---|
 | One developer's local Claude Code sessions | 47 | 68.1% | **68.1%** (32 of 47; Wilson 53.8 to 79.6) | 61.7% | 0.0% |
-| SWE-chat Claude Code sessions (public data, 337 developer clusters) | 1,051 | 35.8% | **18.7%** (Wilson 16.5 to 21.2; developer-cluster bootstrap 13.9 to 27.6) | 7.2% | 0.5% |
+| SWE-chat Claude Code sessions (public data; 57 developers plus 280 sessions with no user id, each its own cluster) | 1,051 | 35.8% | **18.7%** (Wilson 16.5 to 21.2; developer-cluster bootstrap 13.9 to 27.6) | 7.2% | 0.5% |
 
 Read these with the caveats:
 
@@ -54,7 +54,7 @@ Read these with the caveats:
 * Waste dollars (the cost of the redundant turns) and churn dollars (the read-to-write premium) are different
   quantities, summed only to decide whether a session crosses the threshold.
 
-## Do independent readers agree with the cause the tool names?
+## Do other readers agree with the cause the tool names?
 
 `tracegauge score` gives each churn event a cause (`TTL_GAP`, `MODEL_SWITCH`, `COMPACTION` or `UNEXPLAINED`)
 from rules over the transcript. To see whether the rules match a reader's reading of the documented
