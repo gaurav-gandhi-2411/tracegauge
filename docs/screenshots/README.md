@@ -8,7 +8,7 @@ These replace the PR-evidence screenshots removed in the 0.16.0 history scrub. B
 cannot be recreated (the old builds are gone), so each image is the current build in one state.
 
 - Captured on: 2026-10-18
-- master commit: `ca26b2075fad057f9992b89de118f2e25075666c` (pyproject version 0.16.0, unreleased 0.17.0 work)
+- master commit: `269da4790a33fee1eb5db9f9c125c6682c5bdace` (PR #154, the turn-count fix; pyproject version 0.16.0, unreleased 0.17.0 work)
 - Browser: Chrome headless, 1280 px wide, light theme (the dashboard has no dark theme)
 
 ## How they were produced
@@ -35,7 +35,7 @@ out of the tree (the page reads the transcript on request); the file was moved b
 
 | File | What it shows | URL path |
 |---|---|---|
-| `home.png` | Session list with the brand lockup, ten synthetic sessions, one with waste, two unpriced | `/` |
+| `home.png` | Session list with the brand lockup, ten synthetic sessions (all counted as content sessions, none as stubs), one with waste, two unpriced | `/` |
 | `session-output-heavy.png` | Output lever finding (87% of cost), cost breakdown, three subagent transcripts in the cost note | `/session/9e574f7a-a0ee-49ae-9453-dd324b0dbb41` |
 | `session-context-heavy.png` | Large re-sent context: 68% of cost in the breakdown, and no finding (context share is not a lever by design) | `/session/0822e8f3-6c03-4199-972a-846916419f82` |
 | `session-unpriced.png` | Model id not in the price table: breakdown "Not computed", costs shown as unpriced | `/session/a65ed389-b74d-4fb1-b2e7-06298fadc1a6` |
@@ -45,12 +45,14 @@ out of the tree (the page reads the transcript on request); the file was moved b
 | `cache-churn-empty.png` | Cache-churn card with no events | `/session/3eb13b90-4668-4257-bdd6-40fb06671ad1` |
 | `cache-churn-unavailable.png` | Cache-churn card when the transcript is no longer on disk | `/session/ff5e9ff0-ff50-4de4-b825-67b85cabcc97` |
 | `trends.png` | Trends page (cold-start gate not met) | `/trends` |
-| `baseline-status.png` | Baseline-status page | `/baseline-status` |
+| `baseline-status.png` | Baseline-status page: 10 content sessions, every task type still "building" | `/baseline-status` |
 
 ## Known artefacts of the current build (not of the data)
 
-- Every session is listed as an "empty/stub session" (`Sessions with content: 0`, `10 (100.0%)`):
-  the watcher stores `turn_count = 0` because `watcher.py` calls `upsert_session` without it.
-  This is how master behaves, so the images show it.
+- Ten synthetic sessions are too few, and too short, to activate a self-baseline (it needs at least
+  8 waste-free in-scope sessions of one task type), so the home and baseline-status pages show
+  `Scored vs your lean runs: 0 / 10` and "building" for every type. The generator was kept at ten
+  sessions. The home banner still opens with "Self-baseline active on all 5 task types" next to
+  that 0 / 10: that is the build's wording, not a capture error.
 - All sessions carry the capture date (the store dates a session by when it was scored, not by its
   transcript timestamps), so the trends page cannot show a history.
