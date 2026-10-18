@@ -17,6 +17,7 @@ from functools import lru_cache
 from typing import Any
 
 from tracegauge.baselines import MULTIDEV_BASELINES_PATH
+from tracegauge.self_baseline import ordinal as _ordinal
 
 SCHEMA = 2  # the table layout this module reads (grid of percentiles of tokens per turn)
 NOTICE = "Contains information from SALT-NLP/SWE-chat, made available under the ODC Attribution License 1.0."
@@ -84,11 +85,6 @@ def session_context(
         "attribution": NOTICE,
         "note": "context, not a verdict",
     }
-
-
-def _ordinal(n: int) -> str:
-    suffix = "th" if 10 <= n % 100 <= 20 else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
-    return f"{n}{suffix}"
 
 
 def context_line(ctx: dict[str, Any]) -> str:

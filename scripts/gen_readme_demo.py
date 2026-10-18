@@ -54,6 +54,7 @@ LINE_STEP = 0.4
 #: judge axis, not output of this run).
 _QUICKSTART_KEEP = (
     "tracegauge quickstart --",
+    "SYNTHETIC HISTORY:",
     "── TOKEN ECONOMY",
     "  Real tokens:",
     "  Verdict:",
@@ -169,7 +170,7 @@ def _svg(lines: list[str]) -> str:
         f'width="{width}" height="{height}" role="img" aria-labelledby="t d">\n'
         '<title id="t">tracegauge quickstart</title>\n'
         '<desc id="d">Animated terminal recording of tracegauge quickstart on the bundled '
-        "synthetic sample session: token economy reading (building, 0 of 10 own sessions) with a context line, one deterministic waste finding and the "
+        "synthetic sample session: token economy verdict against a labelled synthetic history, one deterministic waste finding and the "
         f"cost breakdown. About {last_at + 0.2:.0f} seconds, plays once.</desc>\n"
         "<style>\n"
         f"text{{font-family:ui-monospace,Menlo,Consolas,'DejaVu Sans Mono',monospace;"
