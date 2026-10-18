@@ -232,8 +232,8 @@ Pitfalls
   missing and has dedicated handling for compaction.
 - The model is in `turn_context`, not in the token event.
 - `Paginated` history changes which event types exist (VERIFIED above).
-- `.jsonl.zst` files can exist when compression is enabled (VERIFIED above); UNVERIFIED: the third-party
-  parser has no `.zst` support, so a reader that must see compressed files has to add it.
+- `.jsonl.zst` files can exist when compression is enabled (VERIFIED above), so a reader that must see
+  compressed files has to handle them.
 
 ### Gemini CLI (`google-gemini/gemini-cli` @ `fa2531d`)
 
@@ -269,15 +269,13 @@ Token usage
   arrives (`chatRecordingService.ts:1152-1157`).
 
 Pitfalls
-- The same message `id` appears more than once; keep the last (UNVERIFIED, above). The third-party parser
-  does exactly this for `type == "gemini"` records (`rust/adapters/gemini/src/parser.rs:174-208`).
+- The same message `id` appears more than once; keep the last (UNVERIFIED, above).
 - UNVERIFIED (same parser, `parser.rs:400-416`): when `total == input + output + thoughts + tool`, `input`
   includes the cached tokens, and the overlap has to be subtracted.
-- `$rewindTo` and `$patch` records exist; UNVERIFIED: the third-party parser does not handle them, so
-  rewound turns may still be counted. Decide whether a rewound turn was billed (it was) or part of the final
-  conversation (it is not) and document the choice.
-- A relocated home (`GEMINI_CLI_HOME`) moves the whole tree; UNVERIFIED: the third-party parser ignores
-  that variable.
+- `$rewindTo` and `$patch` records exist, so rewound turns may still be counted by a naive reader. Decide
+  whether a rewound turn was billed (it was) or part of the final conversation (it is not) and document the
+  choice.
+- A relocated home (`GEMINI_CLI_HOME`) moves the whole tree, so honour that variable.
 - Files older than 30 days are gone by default (VERIFIED above), so a history reader sees only recent
   sessions.
 - A legacy single-document `.json` form exists alongside `.jsonl`.
@@ -318,8 +316,7 @@ Pitfalls
   two VERIFIED facts above, UNVERIFIED as observed behaviour).
 - UNVERIFIED (third-party parser): installs from before and after the move to SQLite coexist, so a reader needs
   both the legacy JSON tree and the database, and must dedupe by message id between them
-  (`rust/adapters/opencode/src/loader.rs:106-180`, `:546-560`). A public issue in that project describes data
-  going missing after the migration (https://github.com/ryoppippi/ccusage/issues/845, 2026-10-10).
+  (`rust/adapters/opencode/src/loader.rs:106-180`, `:546-560`).
 - UNVERIFIED (same parser, `loader.rs:615-730`): sessions forked in the newer format copy their parent's
   leading `session_message` rows, so inherited assistant usage has to be dropped.
 - Channel-suffixed database file names (VERIFIED above).
@@ -361,7 +358,6 @@ Pitfalls
 - Tokens are English text in markdown, in a format that can change with the wording.
 - The file is per project, not per user.
 - Per-message totals include reflections.
-- UNVERIFIED: a third-party usage reader has no Aider support.
 
 ### Copilot CLI (`github/copilot-cli` @ `dcdc027`)
 
@@ -417,8 +413,7 @@ The repository now has an SDK-based format and a legacy VS Code format; a reader
   known, the emitting code was not checked.
 
 Pitfalls: two formats; the SDK file is replaced as a whole, so a reader must tolerate it changing mid-read
-(a consequence of the atomic rewrite, VERIFIED above); UNVERIFIED: a third-party usage reader has no Cline
-adapter.
+(a consequence of the atomic rewrite, VERIFIED above).
 
 ## (d) Testing an adapter
 
