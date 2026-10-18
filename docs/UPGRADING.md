@@ -87,14 +87,23 @@ such a row with zeros.
 If the transcripts are gone (Claude Code deletes old ones), `rescore` cannot help: those rows stay
 excluded and your self-baselines and alarm threshold rebuild from new sessions.
 
-# Upgrading to 0.17 (sessions that showed no token verdict)
+# Upgrading to 0.17 (token verdicts come from your own sessions)
 
-Until 0.17 the watcher and the dashboard scored a session of a task type whose own baseline was
-still building with no token verdict (`unavailable`, source `building`), even where the bundled
-reference band had one for the type. Only `tracegauge score FILE` used the bundled band. From 0.17
-such a session is scored against the bundled band (source `corpus`, labelled as one developer's
-sessions) until your own baseline for the type activates; a type the bundled corpus has no band for
-(feature-build) still shows `unavailable`, and a session below the type's turn floor still does too.
+Until 0.16 `tracegauge score FILE` compared a session with a bundled one-developer band, while the
+watcher and the dashboard showed no token verdict for a task type until about 17 of your own
+waste-free sessions existed (a lean half of them, once it passed a stability check). From 0.17 every
+surface behaves the same way:
 
-Sessions already stored with the blank verdict are queued when the watcher starts (`tracegauge serve`, or
-bare `tracegauge`) and scored again by its first scan; nothing else about them changes.
+* A task type gets a token verdict (`above_p75`, `within_band`, `below_p25`) only from your own
+  sessions: the session's percentile among your other in-scope sessions of that type, with a label
+  against their p25 and p75, from 10 of them. Waste is not a filter, empty stubs and sessions below
+  the scope floor do not count, and there is no lean subset or stability guard any more.
+* Before that it shows `building (n/10)` and the token verdict is `unavailable`. Nothing is
+  borrowed from the one-developer table or from any other population. The waste, cost and
+  trajectory readings do not depend on the token verdict.
+* `tracegauge score FILE` reads your store (when there is one) to know how many sessions of the
+  type you have; with no store every type reads `building (0/10)`.
+* Stored sessions keep the verdict they were scored with; nothing is rewritten.
+* The one-developer table remains in the package (labelled "reference: 1 developer") for the live
+  alarm's fallback threshold and as the upper bound of a task type's scope floor. It is never
+  shown as a verdict.

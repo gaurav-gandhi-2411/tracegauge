@@ -25,11 +25,7 @@ from tracegauge.intelligence.cache import get_or_compute_intelligence
 from tracegauge.intelligence.chat import ChatApiConfig, ask_api, ask_local
 from tracegauge.legacy import LEGACY_ROW_LABEL, is_legacy_row
 from tracegauge.patterns_extra import PatternsExtraMissing, require_patterns_extra
-from tracegauge.self_baseline import (
-    SelfBaselineState,
-    compute_baseline_cost_band,
-    load_for_scoring,
-)
+from tracegauge.self_baseline import SelfBaselineState, compute_baseline_cost_band, load_or_compute
 from tracegauge.store import (
     _SORT_COLUMN_WHITELIST,
     TrajectoryRenderState,
@@ -274,8 +270,7 @@ def _per_type_status(conn: sqlite3.Connection, self_bl_state) -> list[dict]:
                 "task_type": task_type,
                 "total": total_type,
                 "in_scope": in_scope,
-                "waste_free_n": type_bl.waste_free_n,
-                "lean_n": type_bl.lean_n,
+                "own_n": type_bl.own_n,
                 "scope_floor": sf,
                 "source": type_bl.source,
                 "sessions_needed": type_bl.sessions_needed,
@@ -318,7 +313,7 @@ def create_app(config: ServerConfig) -> Flask:
 
     def get_self_bl():
         if config.db_path is not None:
-            return load_for_scoring(config.db_path, _b2)
+            return load_or_compute(config.db_path, _b2)
         return None
 
     # -----------------------------------------------------------------------

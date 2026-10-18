@@ -36,13 +36,12 @@ from tracegauge.cost import SessionCost, compute_session_cost, load_price_table
 from tracegauge.discovery import iter_session_files
 from tracegauge.live_monitor import find_active_session, score_live_session
 from tracegauge.score import ThreeAxisResult, score_session
-from tracegauge.self_baseline import load_for_scoring
+from tracegauge.self_baseline import load_or_compute
 from tracegauge.store import (
     backfill_turn_counts,
     file_hash,
     needs_scoring,
     open_db,
-    queue_rescore_of_hidden_verdicts,
     resolve_db_path,
     upsert_session,
 )
@@ -282,22 +281,11 @@ def run_watcher(
     except Exception:
         logger.exception("Turn-count backfill failed — continuing")
 
-    # Sessions stored while a type's own baseline was building have no verdict even where the
-    # bundled band has one. Queue them to be scored again by the first scan.
-    try:
-        queued = queue_rescore_of_hidden_verdicts(
-            conn, [t for t, v in baselines.get("types", {}).items() if v.get("available")]
-        )
-        if queued:
-            logger.info("Queued %d session(s) to be scored again with the bundled band", queued)
-    except Exception:
-        logger.exception("Could not queue older sessions for scoring — continuing")
-
     while True:
         try:
             # Refresh self-baseline each cycle so new sessions accumulate into
             # the reference pool without restarting the watcher.
-            self_bl = load_for_scoring(db_path, baselines)
+            self_bl = load_or_compute(db_path, baselines)
             count = _scan_once(config, conn, baselines, self_baseline=self_bl, prices=prices)
             if count:
                 logger.info("Scan complete: %d session(s) scored", count)

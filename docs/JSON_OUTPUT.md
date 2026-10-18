@@ -141,6 +141,11 @@ meta file is missing or unreadable). `usd` of a type is `null` when none of its 
 real-token units, as is each type's `real_tokens`; the new `tokens` fields are billed tokens (they include
 every re-read of the cached context, so they are much larger).
 
+`own_percentile` (an integer 0 to 100, or `null`) and `own_sessions` (an integer) are additive: where the
+token reading sits among your other in-scope sessions of the same task type (mid-rank percentile) and
+how many were compared. `null` / `0` while the type is `building` and when no history is available;
+they are not stored.
+
 `cache_churn` (additive, `schema_version` stays 1) is always an object with a fixed key set; see
 [CACHE_CHURN.md](CACHE_CHURN.md) for what it means. It is computed from the source transcript when
 `score` runs and is never stored. Keys: `status` (`"ok"`, or `"unavailable"` when the transcript could

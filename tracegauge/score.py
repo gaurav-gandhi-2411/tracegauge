@@ -29,6 +29,7 @@ from typing import TYPE_CHECKING, Any
 from tracegauge.alarm_baseline import dominant_model
 from tracegauge.baselines import compute_real_tokens, load_baselines
 from tracegauge.classify import classify_session
+from tracegauge.self_baseline import MIN_OWN_SESSIONS, ordinal, own_percentile, quartiles
 from tracegauge.web.cost_format import cost_is_known
 
 if TYPE_CHECKING:
@@ -153,7 +154,7 @@ class ThreeAxisResult:
     band_verdict: str  # "within_band" | "above_p75" | "below_p25" | "unavailable"
     interpretation: str
     token_domain_of_validity: str
-    baseline_source: str  # "self" | "building" | "corpus" | "b2_corpus"
+    baseline_source: str  # "self" | "building" | "b2_corpus" (library use without a state)
 
     # --- trajectory axis ---
     judge_verdict: str | None
@@ -267,6 +268,12 @@ class ThreeAxisResult:
     # Conversation turn count from the adapted record, carried so the store can persist it (the
     # self-baseline and scope floor read it). NOT part of `score --json`: format_json drops it.
     turn_count: int = 0
+
+    # Where the token reading sits among the user's own sessions of the type: the mid-rank percentile
+    # (0 to 100) and how many other sessions it was compared with. None / 0 while building or when
+    # no state was passed. Additive in `score --json`; not stored.
+    own_percentile: int | None = None
+    own_sessions: int = 0
 
 
 # ---------------------------------------------------------------------------
@@ -507,8 +514,10 @@ def score_session(
         Optional per-user self-baseline state from tracegauge.self_baseline.load_or_compute().
         When provided the token axis scores against the user's own lean reference
         (source='self') or shows the cold-start building state.
-        Falls back to the B2 corpus baseline when not provided or when the type is
-        still building and corpus_fallback was not enabled.
+        A type that is still building has NO token verdict ("building (n/10)"): nothing is
+        borrowed from a bundled table. Only when no state is passed at all (library use, tests,
+        evals) is the raw one-developer table result returned; the CLI, the watcher and the
+        dashboard always pass a state.
     session_cost:
         Optional pre-computed session cost from tracegauge.cost.compute_session_cost.
         When provided, session_cost_usd and cost_approximate are populated on the result.
@@ -541,69 +550,85 @@ def score_session(
     # Resolve which TypeBaseline to use for the token axis.
     type_bl = self_baseline.by_type.get(task_type) if self_baseline is not None else None
 
-    if type_bl is not None and type_bl.source == "self":
-        # Self-baseline active: score against user's own lean reference.
+    own_pct: int | None = None
+    own_count = 0
+    tok_p25: int | None = None
+    tok_median: int | None = None
+    tok_p75: int | None = None
+    if type_bl is not None:
+        # The token verdict is this session's place among the user's OTHER in-scope sessions of the
+        # same type (the session itself is left out when it is already stored): active from
+        # MIN_OWN_SESSIONS of them, "building (n/10)" below that. Nothing is borrowed.
         scope_floor = type_bl.scope_floor
+        pool = sorted(t for sid, t in type_bl.values if sid != impl_result.session_id)
+        own_count = len(pool)
+        active = own_count >= MIN_OWN_SESSIONS
+        tok_baseline_avail = False
+        tok_band = "unavailable"
         if turn_count < scope_floor:
             tok_scope = "out_of_scope"
-            tok_baseline_avail = False
-            tok_p25: int | None = None
-            tok_median: int | None = None
-            tok_p75: int | None = None
-            tok_band = "unavailable"
             tok_interp = (
                 f"Session scope too small for a token-economy reference "
-                f"({turn_count} turns; {task_type} self-derived floor is {scope_floor} turns). "
+                f"({turn_count} turns; {task_type} floor is {scope_floor} turns). "
                 "Trajectory verdict only."
+            )
+        elif not active:
+            tok_scope = "in_scope"
+            tok_interp = (
+                f"building ({own_count}/{MIN_OWN_SESSIONS}): a token verdict places a session among "
+                f"your own {task_type} sessions and needs {MIN_OWN_SESSIONS} of them. No verdict is "
+                "borrowed from another population. The waste and trajectory readings do not "
+                "depend on it."
             )
         else:
             tok_scope = "in_scope"
             tok_baseline_avail = True
-            tok_p25, tok_median, tok_p75 = type_bl.p25, type_bl.median, type_bl.p75
-            # Non-None for source='self' — TypeBaseline invariant.
-            p25_v = tok_p25 if tok_p25 is not None else 0
-            p75_v = tok_p75 if tok_p75 is not None else 0
-            if real_tokens > p75_v:
+            tok_p25, tok_median, tok_p75 = quartiles(pool)
+            own_pct = own_percentile(pool, real_tokens)
+            if type_bl.synthetic:
+                history = f"the {own_count} synthetic-history {task_type} sessions"
+                mine, tail = (
+                    "the synthetic history's",
+                    "(Relative to the invented demo history, not to your sessions.)",
+                )
+            else:
+                history = f"your {own_count} {task_type} sessions"
+                mine = "your"
+                tail = "(Relative to YOUR OWN sessions of this type, not an absolute verdict.)"
+            where = f"about the {ordinal(own_pct)} percentile of {history}"
+            if real_tokens > tok_p75:
                 tok_band = "above_p75"
                 tok_interp = (
-                    f"Session used {real_tokens:,} tokens — above your lean p75 "
-                    f"({p75_v:,}) for {task_type}. "
-                    "Heavier than your typical efficient run. "
-                    "(Relative to YOUR OWN lean waste-free sessions — not an absolute verdict.)"
+                    f"Session used {real_tokens:,} tokens: {where}, above {mine} p75 "
+                    f"({tok_p75:,}). Heavier than most of {history}. {tail}"
                 )
-            elif real_tokens < p25_v:
+            elif real_tokens < tok_p25:
                 tok_band = "below_p25"
                 tok_interp = (
-                    f"Token cost is lean for {task_type} ({real_tokens:,} tokens, "
-                    f"below your lean p25 reference ({p25_v:,})). "
-                    + _lean_judgment(impl_result.judge_verdict)
+                    f"Session used {real_tokens:,} tokens: {where}, below {mine} p25 "
+                    f"({tok_p25:,}). " + _lean_judgment(impl_result.judge_verdict) + f" {tail}"
                 )
             else:
                 tok_band = "within_band"
                 tok_interp = (
-                    f"Session used {real_tokens:,} tokens — within your lean reference band "
-                    f"[{p25_v:,}–{p75_v:,}] for {task_type}. "
-                    "(Relative to YOUR OWN lean waste-free sessions — not an absolute verdict.)"
+                    f"Session used {real_tokens:,} tokens: {where}, within {mine} band "
+                    f"[{tok_p25:,}-{tok_p75:,}]. {tail}"
                 )
-        tok_dov = type_bl.domain_of_validity
-        tok_source = "self"
-
-    elif type_bl is not None and type_bl.source == "building":
-        # Self-baseline not yet ready: apply self-derived scope floor, band unavailable.
-        scope_floor = type_bl.scope_floor
-        tok_scope = "out_of_scope" if turn_count < scope_floor else "in_scope"
-        tok_baseline_avail = False
-        tok_p25, tok_median, tok_p75 = None, None, None
-        tok_band = "unavailable"
-        tok_interp = (
-            f"Building your {task_type} self-baseline: need {type_bl.sessions_needed} more "
-            "waste-free sessions. Trajectory verdict available in the meantime."
+        tok_source = "self" if active else "building"
+        tok_dov = (
+            type_bl.domain_of_validity
+            if tok_source == type_bl.source
+            else (
+                f"Building your {task_type} history ({own_count}/{MIN_OWN_SESSIONS} of your other "
+                "sessions of this type). No token verdict until then. "
+                f"Scope floor: {scope_floor} turns."
+            )
         )
-        tok_dov = type_bl.domain_of_validity
-        tok_source = "building"
 
     else:
-        # Corpus fallback (type_bl.source == 'corpus') or no self-baseline → B2 result.
+        # No self-baseline state was passed (library use, tests, evals): the raw bundled-table
+        # result. The CLI, the watcher and the dashboard always pass a state, so a product path
+        # never reaches this branch.
         tok_scope = impl_result.scope_status
         tok_baseline_avail = impl_result.baseline_available
         tok_p25, tok_median, tok_p75 = impl_result.p25, impl_result.median, impl_result.p75
@@ -724,6 +749,8 @@ def score_session(
         output_pct=_out_pct,
         waste_pct=_waste_pct,
         turn_count=turn_count,
+        own_percentile=own_pct,
+        own_sessions=own_count,
     )
 
 

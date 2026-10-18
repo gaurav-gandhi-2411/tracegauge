@@ -324,6 +324,27 @@ def _db_legacy_count(db_path: Path) -> int:
         return 0
 
 
+def _self_baseline_for(store_conn: object, baselines: dict, override: object = None):
+    """The user's own baseline state for the token verdict of a session being scored.
+
+    With a store it is computed (or read from its cache) from the user's stored sessions; without
+    one every task type is ``building`` (0/10). Either way no verdict is borrowed from a bundled
+    table. A failure reading the store falls back to the empty state, never to a bundled verdict.
+    """
+    from tracegauge.self_baseline import building_state, load_or_compute  # noqa: PLC0415
+
+    if override is not None:  # the quickstart's in-memory synthetic history; no store involved
+        return override
+    if store_conn is not None:
+        try:
+            db_file = store_conn.execute("PRAGMA database_list").fetchone()[2]  # type: ignore[attr-defined]
+            if db_file:
+                return load_or_compute(Path(db_file), baselines)
+        except Exception:
+            pass
+    return building_state(baselines)
+
+
 def score_path(
     path: Path,
     baselines: dict,
@@ -331,6 +352,7 @@ def score_path(
     use_judge: bool,
     json_mode: bool,
     store_conn: object = None,
+    self_baseline: object = None,
 ) -> None:
     """Adapt, detect waste, optionally judge, score, and print one session.
 
@@ -384,6 +406,7 @@ def score_path(
     result = score_session(
         record,
         baselines,
+        self_baseline=_self_baseline_for(store_conn, baselines, self_baseline),
         judge_entry=judge_entry,
         waste_entry=waste_entry,
         session_cost=session_cost,
@@ -493,6 +516,7 @@ def _score_path_with_api_judge(
     result = score_session(
         record,
         baselines,
+        self_baseline=_self_baseline_for(store_conn, baselines),
         judge_entry=judge_entry,
         waste_entry=waste_entry,
         session_cost=session_cost,
@@ -2115,11 +2139,18 @@ def main() -> None:
     if args.command == "quickstart":
         from importlib import resources
 
+        from tracegauge.quickstart_history import synthetic_state
+
         print(
             "tracegauge quickstart -- no local judge, no network call, no files of yours read.\n"
             "Scoring a bundled sample Claude Code session (token economy, deterministic waste "
             "detection, cost annotation -- the trajectory-quality axis is skipped, since that "
             "needs a local Ollama judge or an API key, neither required for this demo).\n"
+            "SYNTHETIC HISTORY: the token reading compares the sample with 12 invented sessions.\n"
+            "A token verdict compares a session with 10 or more of YOUR OWN sessions of the same "
+            "task type. You have none to compare here, so 12 invented research-recon sessions ship "
+            "with the demo. They are not your sessions, are held in memory only and are never "
+            "written to your store.\n"
         )
         sample_path = resources.files("tracegauge.data") / "quickstart_sample_session.jsonl"
         with resources.as_file(sample_path) as concrete_path:
@@ -2130,6 +2161,7 @@ def main() -> None:
                     JudgeConfig(),
                     use_judge=False,
                     json_mode=False,
+                    self_baseline=synthetic_state(load_baselines()),
                 )
             except SessionAdaptError:
                 sys.exit(EXIT_ADAPT_ERROR)
