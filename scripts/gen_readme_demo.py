@@ -125,6 +125,18 @@ def quickstart_lines(output: str) -> list[str]:
     return [ln for ln in body.splitlines() if ln.startswith(_QUICKSTART_KEEP)]
 
 
+def subagent_section(output: str) -> str:
+    """The subagent lines of the COST ANNOTATION of a ``tracegauge score`` report, verbatim.
+
+    From the "Includes N subagent transcript(s)" line to the end of that paragraph (the per-type
+    lines), so the README block is exactly what a user sees under the cost note.
+    """
+    lines = output.splitlines()
+    start = next(i for i, ln in enumerate(lines) if "subagent transcript(s)" in ln)
+    end = next((i for i in range(start, len(lines)) if not lines[i].strip()), len(lines))
+    return "\n".join(ln.rstrip() for ln in lines[start:end])
+
+
 def cache_churn_section(output: str) -> str:
     """The CACHE CHURN section of a ``tracegauge score`` report, verbatim."""
     lines = output.splitlines()
@@ -192,10 +204,15 @@ def generate() -> dict[str, str]:
         quickstart = _run_cli(["quickstart"], home)
         session = churn_session(Path(tmp) / "projects" / "demo-api" / "churn_demo.jsonl")
         scored = _run_cli(["score", str(session), "--no-judge"], home)
+        from tests.subagent_synth import build_session
+
+        sub_session = build_session(Path(tmp) / "subagents-demo")
+        sub_scored = _run_cli(["score", str(sub_session), "--no-judge"], home)
     lines = quickstart_lines(quickstart)
     return {
         "quickstart_excerpt": "\n".join(lines),
         "cache_churn": cache_churn_section(scored),
+        "subagents": subagent_section(sub_scored),
         "svg": _svg(lines),
         "quickstart_full": quickstart,
     }
@@ -221,14 +238,16 @@ def main() -> int:
     if args.check:
         readme = Path(args.check[0]).read_text(encoding="utf-8")
         blocks = _fenced_blocks(readme)
-        bad = [k for k in ("quickstart_excerpt", "cache_churn") if out[k] not in blocks]
+        bad = [
+            k for k in ("quickstart_excerpt", "cache_churn", "subagents") if out[k] not in blocks
+        ]
         svg = Path(args.check[1]).read_text(encoding="utf-8").replace("\r\n", "\n")
         if svg != out["svg"]:
             bad.append("svg")
         for key in bad:
             print(f"{key} does not match the CLI output", file=sys.stderr)
         return 1 if bad else 0
-    for key in ("quickstart_excerpt", "cache_churn"):
+    for key in ("quickstart_excerpt", "cache_churn", "subagents"):
         print(f"===== {key} =====\n{out[key]}\n")
     return 0
 

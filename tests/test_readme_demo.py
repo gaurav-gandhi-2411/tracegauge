@@ -105,8 +105,8 @@ def test_check_mode_stays_strict_and_exits_nonzero_on_drift(
 
 def test_generation_is_deterministic(out: dict[str, str]) -> None:
     again = gen.generate()
-    assert {k: again[k] for k in ("quickstart_excerpt", "cache_churn", "svg")} == {
-        k: out[k] for k in ("quickstart_excerpt", "cache_churn", "svg")
+    assert {k: again[k] for k in ("quickstart_excerpt", "cache_churn", "subagents", "svg")} == {
+        k: out[k] for k in ("quickstart_excerpt", "cache_churn", "subagents", "svg")
     }
 
 
@@ -224,3 +224,47 @@ def test_negative_control_quickstart_sum_mismatch_is_detected() -> None:
     assert _quickstart_sum(good) == (2.0, 2.0)
     summed, stated = _quickstart_sum(good.replace("$2.00\n", "$1.99\n"))
     assert summed != stated
+
+
+def _subagent_numbers(block: str) -> tuple[int, float, list[tuple[int, float]]]:
+    head = re.search(r"Includes \d+ subagent transcript\(s\): ([\d,]+) tokens, \$([\d.]+)", block)
+    assert head, block
+    rows = re.findall(r"^\s+[\w-]+: \d+ file\(s\), ([\d,]+) tokens, \$([\d.]+)", block, flags=re.M)
+    return (
+        int(head.group(1).replace(",", "")),
+        float(head.group(2)),
+        [(int(t.replace(",", "")), float(d)) for t, d in rows],
+    )
+
+
+def test_readme_subagent_block_equals_the_cli_output(out: dict[str, str]) -> None:
+    block = out["subagents"]
+    assert "subagent transcript(s)" in block and "executor:" in block
+    assert block in _text_blocks(README.read_text(encoding="utf-8")), (
+        "README subagent block is stale: python scripts/gen_readme_demo.py"
+    )
+
+
+def test_subagent_type_tokens_add_up_to_the_line_above_them(out: dict[str, str]) -> None:
+    # The per-type lines must be in the same unit as the "Includes N subagent transcript(s)" line.
+    total_tokens, total_usd, rows = _subagent_numbers(out["subagents"])
+    assert sum(t for t, _ in rows) == total_tokens
+    assert abs(sum(d for _, d in rows) - total_usd) <= 0.015 * len(rows)
+
+
+def test_readme_says_so_when_subagent_dollar_rows_do_not_add_up(out: dict[str, str]) -> None:
+    _, total_usd, rows = _subagent_numbers(out["subagents"])
+    summed = round(sum(d for _, d in rows), 2)
+    if summed != total_usd:
+        readme = README.read_text(encoding="utf-8")
+        assert f"${summed:.2f}" in readme and f"${total_usd:.2f}" in readme
+
+
+def test_negative_control_subagent_unit_mix_is_detected() -> None:
+    mixed = (
+        "Includes 2 subagent transcript(s): 1,000 tokens, $1.00\n"
+        "  executor: 1 file(s), 5,000 tokens, $0.60\n"
+        "  verifier: 1 file(s), 1,000 tokens, $0.40"
+    )
+    total_tokens, _, rows = _subagent_numbers(mixed)
+    assert sum(t for t, _ in rows) != total_tokens
