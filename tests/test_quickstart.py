@@ -70,10 +70,13 @@ def test_quickstart_shows_a_verdict_a_waste_finding_with_proof_and_the_breakdown
     assert exc.value.code == 0
     out = capsys.readouterr().out
     token_section = out.split("TRAJECTORY QUALITY")[0]
-    # No sessions of the user's own yet: "building (0/10)", and no verdict from a bundled table.
-    assert "building (0/10)" in token_section
+    # The demo shows an ACTIVE own-sessions verdict, against a labelled synthetic history.
+    assert "building" not in token_section
+    assert "SYNTHETIC HISTORY" in token_section
+    flat = " ".join(token_section.split())  # the report wraps lines
+    assert "percentile of the 12 synthetic-history research-recon sessions" in flat
     assert "Session scope too small" not in token_section
-    assert not any(v in token_section for v in ("within_band", "above_p75", "below_p25"))
+    assert any(v in token_section for v in ("within_band", "above_p75", "below_p25"))
     assert "Events:  0 detected" not in out
     assert "REPEATED-FAILED-RETRY" in out
     assert "turns:" in out  # proof turns are attached to the event
@@ -93,3 +96,49 @@ def test_quickstart_sample_is_labelled_synthetic():
         encoding="utf-8"
     )
     assert text.splitlines()[0].count("Synthetic demo session") == 1
+
+
+def test_quickstart_never_reads_or_writes_the_users_store(monkeypatch, capsys, tmp_path):
+    # The synthetic history is an in-memory state: no store is opened, no baseline cache is read or
+    # written, and the store path the user would have is never created.
+    import tracegauge.self_baseline as sb
+    import tracegauge.store as store
+
+    db = tmp_path / "users" / "tes.db"
+    monkeypatch.setenv("TRACEGAUGE_DB_PATH", str(db))
+    monkeypatch.setenv("TES_DB_PATH", str(db))
+
+    def boom(*a, **k):
+        raise AssertionError("quickstart touched the store")
+
+    monkeypatch.setattr(store, "open_db", boom)
+    monkeypatch.setattr(sb, "load_or_compute", boom)
+    monkeypatch.setattr(sb, "compute_self_baselines", boom)
+    monkeypatch.setattr("sys.argv", ["tracegauge", "quickstart"])
+    with pytest.raises(SystemExit) as exc:
+        cli.main()
+    assert exc.value.code == 0
+    assert "SYNTHETIC HISTORY" in capsys.readouterr().out
+    assert not db.exists() and not db.parent.exists()
+    assert not list(tmp_path.rglob("self_baseline_cache.json"))
+
+
+def test_synthetic_history_is_a_labelled_seeded_state_for_one_type_only():
+    import random
+
+    from tracegauge.baselines import load_baselines
+    from tracegauge.quickstart_history import SAMPLE_TASK_TYPE, SYNTHETIC_TOKENS, synthetic_state
+    from tracegauge.self_baseline import MIN_OWN_SESSIONS
+
+    # The constants are the seeded draw they claim to be.
+    rng = random.Random(42)
+    drawn = sorted(int(round(rng.lognormvariate(12.7, 0.55), -3)) for _ in range(12))
+    assert tuple(drawn) == SYNTHETIC_TOKENS
+    assert len(SYNTHETIC_TOKENS) >= MIN_OWN_SESSIONS
+    state = synthetic_state(load_baselines())
+    active = [t for t, tb in state.by_type.items() if tb.source == "self"]
+    assert active == [SAMPLE_TASK_TYPE]
+    tb = state.by_type[SAMPLE_TASK_TYPE]
+    assert tb.synthetic and "SYNTHETIC HISTORY" in tb.domain_of_validity
+    assert all(sid.startswith("synthetic-") for sid, _ in tb.values)
+    assert not any(t.synthetic for k, t in state.by_type.items() if k != SAMPLE_TASK_TYPE)

@@ -276,8 +276,7 @@ def _per_type_status(conn: sqlite3.Connection, self_bl_state) -> list[dict]:
                 "task_type": task_type,
                 "total": total_type,
                 "in_scope": in_scope,
-                "waste_free_n": type_bl.waste_free_n,
-                "lean_n": type_bl.lean_n,
+                "own_n": type_bl.own_n,
                 "scope_floor": sf,
                 "source": type_bl.source,
                 "sessions_needed": type_bl.sessions_needed,
@@ -415,7 +414,7 @@ def create_app(config: ServerConfig) -> Flask:
             task_type, int(session.get("real_tokens") or 0), int(session.get("turn_count") or 0)
         )
         context_text = context_line(ctx) if ctx else None
-        own_n = min(type_bl.waste_free_n, MIN_OWN_SESSIONS) if type_bl is not None else 0
+        own_n = min(type_bl.own_n, MIN_OWN_SESSIONS) if type_bl is not None else 0
 
         is_legacy = is_legacy_row(session)
         cost_usd = session.get("session_cost_usd")

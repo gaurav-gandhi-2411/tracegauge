@@ -33,9 +33,7 @@ from tests.churn_synth import clean_chain
 from tests.legacy_store import insert_row
 
 N_TURNS = 90  # above every task type's turns floor, so the session counts toward the baseline
-# The lean subset is the lower half of the outlier-capped waste-free sessions, so reaching
-# min_lean_n (8) takes roughly twice as many sessions.
-N_SESSIONS = 20
+N_SESSIONS = 20  # at least the 10 own sessions a type needs
 
 
 def _write_chain(path: Path, seed: int, n_turns: int = N_TURNS) -> Path:
@@ -125,7 +123,7 @@ def test_self_baseline_activates_from_watcher_scored_sessions(
     state = compute_self_baselines(db, load_baselines(BUNDLED_BASELINES_PATH))
     tb = state.by_type[task_types.pop()]
     assert tb.source == "self"
-    assert tb.lean_n >= 8  # lean subset = lower half of the waste-free sessions
+    assert tb.own_n >= 10  # every in-scope session with usage counts, waste or not
 
 
 def test_zero_turn_count_rows_leave_the_type_building(tmp_path: Path) -> None:

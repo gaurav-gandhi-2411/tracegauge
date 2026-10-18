@@ -149,6 +149,11 @@ falls among other developers' sessions of the same task type: context, not a ver
 `feature-build`, for a task type whose cell was not published and when the turn count is unknown. See
 [MULTIDEV_REFERENCE.md](MULTIDEV_REFERENCE.md).
 
+`own_percentile` (an integer 0 to 100, or `null`) and `own_sessions` (an integer) are additive: where the
+token reading sits among your other in-scope sessions of the same task type (mid-rank percentile) and
+how many were compared. `null` / `0` while the type is `building` and when no history is available;
+they are not stored.
+
 `cache_churn` (additive, `schema_version` stays 1) is always an object with a fixed key set; see
 [CACHE_CHURN.md](CACHE_CHURN.md) for what it means. It is computed from the source transcript when
 `score` runs and is never stored. Keys: `status` (`"ok"`, or `"unavailable"` when the transcript could
