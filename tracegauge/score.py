@@ -260,6 +260,10 @@ class ThreeAxisResult:
     # caller did not compute it (score_session itself never does). ---
     cache_churn: dict[str, Any] | None = None
 
+    # Conversation turn count from the adapted record, carried so the store can persist it (the
+    # self-baseline and scope floor read it). NOT part of `score --json`: format_json drops it.
+    turn_count: int = 0
+
 
 # ---------------------------------------------------------------------------
 # Internal helpers
@@ -657,6 +661,7 @@ def score_session(
         context_growth_pct=_growth_pct,
         output_pct=_out_pct,
         waste_pct=_waste_pct,
+        turn_count=turn_count,
     )
 
 

@@ -71,6 +71,12 @@ fractions, waste events). Judge verdicts are kept. It reports five counts:
 `--dry-run` does the same computation and writes nothing: the store is opened read-only (immutable
 when no `-wal` file exists), so it is not migrated and the file is byte-identical afterwards.
 
+It also records the turn count on older rows that were stored without it (`turn_count` 0 with
+tokens and a readable transcript; the text output says how many, `--dry-run` says how many would
+be). Your own self-baseline only counts rows that carry a turn count, so without this a store written
+by an earlier version stayed on "building". The watcher does the same once at start-up. Only
+`turn_count` is written, and the `--json` document is unchanged.
+
 Idempotent: a second run rescores 0 rows and changes nothing. It never creates a store. Exit codes:
 `0` ok, `1` no store / unopenable store / `--limit < 1`, `4` at least one readable row failed (the
 rest were still rescored); see [EXIT_CODES.md](EXIT_CODES.md). `tracegauge backfill-waste` still works as
