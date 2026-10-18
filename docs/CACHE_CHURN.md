@@ -312,5 +312,5 @@ then card with the sentence:
 12 of the 60 answers changed. The sentence fixed the `TTL_GAP` misses and also pushed Claude to call some
 no-mechanism events `TTL_GAP` (it gave `TTL_GAP` 24 times against 19 events with that detector label), so it
 trades one error for another. The 60 are the first 60 cards of a seeded shuffle of the 160, so they are a
-random subset, but 14 to 19 events per cause is too few for a per-cause precision estimate. All figures in the
+random subset, but 11 to 19 events per cause is too few for a per-cause precision estimate. All figures in the
 table above, and the consensus 158/160, are for the cards as originally used.

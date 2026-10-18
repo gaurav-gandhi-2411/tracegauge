@@ -325,15 +325,23 @@ def test_no_paragraph_repeats_a_sentence() -> None:
 
 def test_ratio_of_sums_interval_is_a_bootstrap_not_wilson() -> None:
     """The subagent share is a ratio of sums, so a Wilson (binomial) interval does not apply to it."""
-    for rel in (
+    paths = [
         "README.md",
         "CHANGELOG.md",
-        "docs/METHODOLOGY.md",
-        "docs/JSON_OUTPUT.md",
-        "docs/ACTIONABLE_FINDINGS.md",
-    ):
-        for n, line in enumerate((ROOT / rel).read_text(encoding="utf-8").splitlines(), 1):
-            if "53.8% of API-equivalent" in line or "subagent share" in line.lower():
-                assert "wilson" not in line.lower(), (
-                    f"{rel}:{n} labels a ratio-of-sums interval as Wilson"
-                )
+        "DATA_SOURCES.md",
+        *sorted(str(p.relative_to(ROOT)).replace("\\", "/") for p in (ROOT / "docs").rglob("*.md")),
+    ]
+    for rel in paths:
+        # A hard-wrapped bullet or paragraph is one block: the interval may sit on a later line than the claim.
+        block: list[str] = []
+        blocks: list[str] = []
+        for line in [*(ROOT / rel).read_text(encoding="utf-8").splitlines(), ""]:
+            if not line.strip() or line.lstrip().startswith(("- ", "|", "#")):
+                blocks.append(" ".join(block))
+                block = [line] if line.strip() else []
+            else:
+                block.append(line)
+        for text in blocks:
+            low = text.lower()
+            if "53.8% of api-equivalent" in low or "subagent share" in low:
+                assert "wilson" not in low, f"{rel} labels a ratio-of-sums interval as Wilson"
