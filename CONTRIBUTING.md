@@ -60,14 +60,9 @@ uv run ruff check .
 uv run ruff format --check .
 ```
 
-**`ruff` is currently informational-only in CI** (`.github/workflows/ci.yml`
-— this repo never had it enforced before that workflow existed, and a large
-share of `scripts/` predates it; see the workflow's own comments). It is
-NOT yet a merge-blocking gate for the whole tree. This is a known,
-deliberate, temporary state, not an oversight.
-
-**Set up the pre-commit hook anyway, so new/touched files stay clean going
-forward, even though CI doesn't enforce it repo-wide yet:**
+**`ruff check` and `ruff format --check` are blocking in CI**
+(`.github/workflows/ci.yml`); only the mypy step there is informational.
+Set up the pre-commit hook so your commits are checked before CI sees them:
 
 ```bash
 uv run pre-commit install

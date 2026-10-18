@@ -145,8 +145,10 @@ Everything is in `tracegauge/adapt.py`.
   `collect_subagent_usage` rolls their usage up with the same per-response dedupe, aggregated per file, model,
   speed and region. The parent's own transcript does not contain the subagent's token usage, so adding the
   files does not double count. The directory is read flat: a file nested deeper is ignored.
-- **No sidecar metadata is read.** Nothing in the adapter reads a separate metadata file to identify a
-  subagent's type; identification is by path only.
+- **Subagent type comes from a sidecar file (0.17.0).** Next to each `agent-<id>.jsonl` Claude Code writes
+  `agent-<id>.meta.json` with an `agentType`; `read_agent_type` reads it (missing, unreadable or non-string
+  values become `unknown`) so cost and tokens can be broken down per subagent type. Nothing else in the
+  adapter reads a metadata file.
 - **Text, tools and edits.** Tool names come from `tool_use` blocks, snippets are redacted by
   `_redact_secrets`, and `_extract_edit_operations_from_content` pulls edit/write operations in the same pass.
 - **Known limits of the reference adapter** (found by running it with synthetic input): `adapt_session`

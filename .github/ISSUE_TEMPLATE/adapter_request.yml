@@ -77,5 +77,5 @@ body:
       options:
         - label: The sample contains no real prompts, code, paths, ids or keys.
           required: true
-        - label: I read docs/ADAPTERS.md and this agent is not already described there as planned work.
+        - label: I read docs/ADAPTERS.md and checked that an adapter for this agent is not already shipped or being built.
           required: true
