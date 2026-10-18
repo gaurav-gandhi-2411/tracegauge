@@ -5,6 +5,41 @@ contributions are welcome, but the bar is the same one the maintainer
 holds their own commits to: real tests, honest documentation, no
 fabricated numbers.
 
+## Quickstart for your first contribution
+
+```bash
+git clone https://github.com/gaurav-gandhi-2411/tracegauge.git
+cd tracegauge
+uv sync --frozen                                  # exact locked dependencies, dev tools included
+uv run pytest tests/test_usage_dedupe.py -v       # one test file, under a second
+uv run pytest tests/ -q                           # the full suite (a few minutes)
+uv run tracegauge quickstart                      # scores a bundled synthetic session; no network, none of your files read
+git commit -s -m "docs: what you changed"         # -s adds the DCO sign-off every commit needs
+```
+
+Good places to start: the issues labelled `good first issue`, a "Limits" section in `docs/` that says
+something is not covered, or [`docs/ADAPTERS.md`](docs/ADAPTERS.md) if you want to help another coding
+agent get supported.
+
+**Finding your own Claude Code transcripts.** Claude Code writes one `<session-id>.jsonl` per session
+under `~/.claude/projects/<project-folder>/` (on Windows, `%USERPROFILE%\.claude\projects\`). To see what
+tracegauge makes of one, run `uv run tracegauge score <path-to-file.jsonl>`, or `score` a whole project
+folder. They are your data and can contain code and secrets: read them, never commit them.
+
+**The rules that are easy to miss**
+
+- Fixtures are synthetic. Never commit real session text, prompts, file paths, ids or keys, not even
+  trimmed or "anonymised"; write a small file in the real record shape instead (the existing ones are in
+  `tests/fixtures/`, for example `tests/fixtures/usage_dedupe/multi_block_session.jsonl`).
+- Every new `.py` file starts with the SPDX header; `python scripts/spdx_headers.py` adds it.
+- Sign off every commit (`git commit -s`), see "Licence and sign-off" below.
+- A number in docs, code comments or a pull request description comes with its source: the command
+  that printed it, the file it was read from, or the vendor page and the date you read it. A figure from
+  data that is not in this repository is called what it is, an unpublished local measurement.
+- `tests/test_public_text.py` fails on private paths and internal labels in public text; run it if you
+  touch docs.
+- A pull request carries one change; the pull request template lists what to fill in.
+
 ## Dev setup
 
 ```bash
