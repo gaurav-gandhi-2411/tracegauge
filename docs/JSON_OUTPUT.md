@@ -52,6 +52,18 @@ api_equivalent_usd, multiple, is_floor, error}` where `status` is `ok`, `no_plan
 `no_priced_sessions` or `plan_config_error` (numbers are `null` unless `ok`; `is_floor` is true when
 unpriced turns were excluded from `api_equivalent_usd`).
 
+`subagents` (additive, added in 0.17.0, `schema_version` stays `1`) is the subagent share of the
+period, over the sessions that stored a per-type split: `{sessions_recorded, sessions_not_recorded,
+usd, usd_is_floor, share_of_total_usd, tokens_real, share_of_total_tokens, by_type[{type, files,
+requests, tokens, real_tokens, usd, usd_is_floor, share_of_total_usd}]}`. Sessions scored before 0.17.0 are
+`sessions_not_recorded` (re-score to include); they are in neither numerator nor denominator, so the
+shares describe `sessions_recorded` sessions only. `usd` is `null` where nothing was priced and
+`usd_is_floor` is `true` when unpriced or base-tier-priced usage makes it a lower bound.
+`share_of_total_tokens` and `tokens_real` use real-token units (input - cache read + output);
+`by_type[].real_tokens` are in the same unit; `by_type[].tokens` are billed tokens (input incl. cache
+re-reads + output). `by_type` is sorted by `usd`
+descending, then `type`.
+
 ## `budget [--window-days N]`
 
 `available` (false when the window has no cost data; the numeric fields are then `null`),
@@ -117,6 +129,17 @@ tokens}`; `usd` sums to `total_usd` (priced turns only), `share_pct` is of that 
 priced) and `note` says so when models are unpriced. `priced` / `unpriced_models` are as above.
 `cost_models` (additive) lists the price-table keys of the priced turns; the human cost note uses it to name
 the cache-read multiplier each model was billed at.
+
+`subagents` (additive, added in 0.17.0, `schema_version` stays `1`) is always an object with the
+fixed keys `count` (subagent transcripts), `tokens` (billed tokens), `usd` (`null` when nothing was
+priced), `usd_is_floor`, `share_of_session_usd` (`null` when the session total is 0 or unpriced) and
+`by_type`: a list of `{type, files, requests, tokens, real_tokens, usd, usd_is_floor,
+share_of_session_usd}`
+sorted by `usd` descending, then `type`. `type` is the subagent `agentType` (`unknown` when its
+meta file is missing or unreadable). `usd` of a type is `null` when none of its usage could be priced
+(never `0.0`); the type totals sum to `subagent_cost_usd`. The existing `subagent_tokens` stays in
+real-token units, as is each type's `real_tokens`; the new `tokens` fields are billed tokens (they include
+every re-read of the cached context, so they are much larger).
 
 `cache_churn` (additive, `schema_version` stays 1) is always an object with a fixed key set; see
 [CACHE_CHURN.md](CACHE_CHURN.md) for what it means. It is computed from the source transcript when

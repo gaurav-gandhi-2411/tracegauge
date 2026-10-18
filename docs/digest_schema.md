@@ -173,3 +173,18 @@ _P25_RATIO_MAX = 100.0  # layer1_features clamping
 P25_RATIO_MIN = 0.3  # score.py clamping (tighter)
 P25_RATIO_MAX = 5.0  # score.py clamping (tighter)
 ```
+
+---
+
+## Subagent fields (tracegauge 0.17.0, `tracegauge/_digest.py`)
+
+Additive, defaulted fields; records stored before they existed deserialise unchanged and no
+existing number moves (`ADAPTER_VERSION` / `COST_VERSION` are untouched).
+
+| Field | Type | Meaning |
+|---|---|---|
+| `TurnDigest.agent_type` | string | Subagent type (`agentType` in the sibling `agent-<id>.meta.json`) on aggregated subagent turns. `""` on main-chain turns and on records stored before this field existed; reported as `unknown`, as is a subagent with a missing/bad meta file. Control characters stripped, capped at 64 chars. |
+| `SessionDigest.subagent_files_by_type` | object (string -> int) | Subagent transcripts per type; sums to `subagent_count`. `{}` on older records. |
+
+`collect_subagent_usage` also returns `by_type: {type: {file_count, message_count, real_tokens,
+billed_tokens}}` (and `record["subagent_usage"]["by_type"]`).

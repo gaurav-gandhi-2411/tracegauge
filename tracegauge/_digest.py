@@ -57,6 +57,10 @@ class TurnDigest:
     # stored before these fields existed, which therefore price exactly as before.
     speed: str = ""
     inference_geo: str = ""
+    # Subagent type (``agentType`` of the sibling agent-<id>.meta.json) on aggregated subagent
+    # turns; "" on main-chain turns and on records stored before this field existed (reported
+    # as "unknown"). See tracegauge.adapt.read_agent_type.
+    agent_type: str = ""
 
 
 @dataclass
@@ -81,6 +85,9 @@ class SessionDigest:
     # this field existed.
     subagent_turns: list[TurnDigest] = field(default_factory=list)
     subagent_count: int = 0  # number of subagent transcripts that contributed usage
+    # Transcripts per subagent type (sums to subagent_count); {} on records stored before this
+    # field existed. Lets tracegauge.cost report files per type without file identities.
+    subagent_files_by_type: dict[str, int] = field(default_factory=dict)
     # Usage de-duplication (adapter_version 2): Claude Code writes one assistant record per
     # content block of an API response, each repeating the response's usage; tracegauge.adapt counts
     # each distinct message.id once. usage_records = main-chain assistant records that carried

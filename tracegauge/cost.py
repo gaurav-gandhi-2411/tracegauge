@@ -103,6 +103,23 @@ class TurnCost:
 
 
 @dataclass
+class SubagentTypeCost:
+    """Spend of one subagent type (``agentType``) within a session; see SessionCost."""
+
+    usd: float  # priced part only; meaningless unless usd_known
+    usd_is_floor: bool  # True when some of the type's usage is unpriced or priced at a floor
+    tokens: int  # billed tokens (input incl. cache + output)
+    requests: int
+    files: int
+    # False when none of the type's usage could be priced: usd is then a placeholder 0.0 and
+    # must be shown as unpriced, never as $0.00.
+    usd_known: bool = True
+    # Real tokens (input + cache writes + output, cache re-reads excluded): the unit of the
+    # session's "Includes N subagent transcript(s)" line and of the token-economy axis.
+    real_tokens: int = 0
+
+
+@dataclass
 class SessionCost:
     """Aggregated dollar-cost for a full session."""
 
@@ -123,6 +140,9 @@ class SessionCost:
     # turn_costs is indexed by main-chain turn_index (waste costing joins on it).
     subagent_usd: float = 0.0
     subagent_turn_costs: list[TurnCost] = field(default_factory=list)
+    # subagent_turn_costs grouped by subagent type ("unknown" when the type is not recorded);
+    # sum of usd over the types == subagent_usd.
+    subagent_by_type: dict[str, SubagentTypeCost] = field(default_factory=dict)
     # Raw model ids of every turn (main or subagent) that could not be priced -- the
     # machine-readable twin of approximate_reasons. Empty iff every turn priced.
     unpriced_models: list[str] = field(default_factory=list)
@@ -617,6 +637,7 @@ def compute_session_cost(
         server_tool_warnings=server_tool_warnings,
         subagent_usd=subagent_usd,
         subagent_turn_costs=subagent_turn_costs,
+        subagent_by_type=_subagent_by_type(digest, subagent_turn_costs),
         unpriced_models=unpriced_models,
         pricing_caveats=pricing_caveats,
         cache_write_1h_tokens=sum(tc.cache_write_1h_tokens for tc in all_turn_costs),
@@ -628,6 +649,33 @@ def compute_session_cost(
         geo_us_requests=geo_us_requests,
         geo_us_unsupported_requests=geo_us_unsupported,
     )
+
+
+def _subagent_by_type(
+    digest: SessionDigest, subagent_turn_costs: list[TurnCost]
+) -> dict[str, SubagentTypeCost]:
+    """Group priced subagent turns by ``agent_type`` ("" -> "unknown", the legacy/no-meta case)."""
+    out: dict[str, SubagentTypeCost] = {}
+    priced_any: dict[str, bool] = {}
+    for t, tc in zip(digest.subagent_turns, subagent_turn_costs, strict=True):
+        key = t.agent_type or "unknown"
+        acc = out.setdefault(key, SubagentTypeCost(0.0, False, 0, 0, 0, usd_known=False))
+        acc.usd += tc.total_usd
+        acc.tokens += t.token_count_input + t.token_count_output
+        acc.real_tokens += t.token_count_input - t.cache_read + t.token_count_output
+        acc.requests += t.request_count
+        has_tokens = bool(t.token_count_input or t.token_count_output)
+        if tc.priced and has_tokens:
+            priced_any[key] = True
+        # Unpriced usage, a base-tier pricing simplification or unpriced server-side tools all
+        # make the type's dollars a lower bound.
+        if (not tc.priced and has_tokens) or tc.pricing_caveat or tc.server_tool_warning:
+            acc.usd_is_floor = True
+    for key, acc in out.items():
+        acc.files = digest.subagent_files_by_type.get(key, 0)
+        # A type with no token usage at all costs a known zero; otherwise known iff something priced.
+        acc.usd_known = priced_any.get(key, False) or not acc.tokens
+    return out
 
 
 def _billing_modifier_note(
@@ -733,6 +781,7 @@ __all__ = [
     "cache_read_multiplier",
     "TurnCost",
     "SessionCost",
+    "SubagentTypeCost",
     "STALE_THRESHOLD_DAYS",
     "load_price_table",
     "compute_turn_cost",

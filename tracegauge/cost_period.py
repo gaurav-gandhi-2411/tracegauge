@@ -35,6 +35,7 @@ alongside an unrelated feature) and fixed as its own dedicated follow-up.
 this module's own convention.
 """
 
+import json
 import sqlite3
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -55,6 +56,42 @@ class ProjectCostBreakdown:
     session_count: int
     # Models whose turns are missing from total_usd for sessions in this project.
     unpriced_models: list[str] = field(default_factory=list)
+
+
+@dataclass
+class SubagentTypePeriod:
+    """One subagent type aggregated over the recorded sessions of a period."""
+
+    type: str
+    files: int = 0
+    requests: int = 0
+    tokens: int = 0  # billed tokens
+    real_tokens: int = 0
+    usd: float | None = None  # None until some session priced this type
+    usd_is_floor: bool = False
+    share_of_total_usd: float | None = None  # of the recorded sessions' spend
+
+
+@dataclass
+class PeriodSubagents:
+    """Subagent share of a period's spend, over sessions that recorded a per-type split.
+
+    ``sessions_not_recorded`` rows (scored before 0.17.0, subagent_by_type_json NULL) are in
+    NEITHER the numerators nor the denominators here: ``sessions_recorded`` says what the
+    figures cover. Re-scoring recovers the rest.
+    """
+
+    sessions_recorded: int = 0
+    sessions_not_recorded: int = 0
+    usd: float = 0.0  # subagent spend (priced part) of the recorded sessions
+    usd_is_floor: bool = False
+    recorded_total_usd: float = 0.0  # their total session spend (subagents included)
+    share_of_total_usd: float | None = None
+    # Real-token units (input - cache_read + output), the unit of the stored subagent_tokens.
+    subagent_real_tokens: int = 0
+    recorded_real_tokens: int = 0  # main-chain real_tokens + subagent real tokens
+    share_of_total_tokens: float | None = None
+    by_type: list[SubagentTypePeriod] = field(default_factory=list)
 
 
 @dataclass
@@ -88,6 +125,7 @@ class PeriodCostReport:
     # summed into total_usd. legacy_total_usd sums only those with a stored cost.
     legacy_rows_excluded: int = 0
     legacy_total_usd: float = 0.0
+    subagents: PeriodSubagents = field(default_factory=PeriodSubagents)
 
     @property
     def priced(self) -> bool:
@@ -116,6 +154,60 @@ def _project_label_from_source_path(source_path: str) -> str:
     """
     name = Path(source_path).parent.name
     return name[-40:] if len(name) > 40 else name
+
+
+def _period_subagents(rows: list[sqlite3.Row]) -> PeriodSubagents:
+    """Aggregate the per-type subagent split over the period's rows (see PeriodSubagents)."""
+    out = PeriodSubagents()
+    types: dict[str, SubagentTypePeriod] = {}
+    for r in rows:
+        if r["session_cost_usd"] is None:
+            continue  # no cost at all: already reported as sessions_missing_cost
+        raw = r["subagent_by_type_json"]
+        if raw is None:
+            out.sessions_not_recorded += 1
+            continue
+        try:
+            entries = [
+                (
+                    str(e["type"]),
+                    int(e["files"]),
+                    int(e["requests"]),
+                    int(e["tokens"]),
+                    int(e["real_tokens"]),
+                    None if e["usd"] is None else float(e["usd"]),
+                    bool(e["usd_is_floor"]),
+                )
+                for e in json.loads(raw)
+            ]
+        except (ValueError, TypeError, KeyError):
+            out.sessions_not_recorded += 1  # unreadable counts as not recorded, never as zero
+            continue
+        out.sessions_recorded += 1
+        out.recorded_total_usd += float(r["session_cost_usd"])
+        out.usd += float(r["subagent_cost_usd"] or 0.0)
+        out.subagent_real_tokens += int(r["subagent_tokens"] or 0)
+        out.recorded_real_tokens += int(r["real_tokens"] or 0) + int(r["subagent_tokens"] or 0)
+        for e_type, e_files, e_requests, e_tokens, e_real, e_usd, e_floor in entries:
+            t = types.setdefault(e_type, SubagentTypePeriod(type=e_type))
+            t.files += e_files
+            t.requests += e_requests
+            t.tokens += e_tokens
+            t.real_tokens += e_real
+            if e_usd is not None:
+                t.usd = (t.usd or 0.0) + e_usd
+            if e_floor:
+                t.usd_is_floor = True
+                out.usd_is_floor = True
+    for t in types.values():
+        if out.recorded_total_usd > 0 and t.usd is not None:
+            t.share_of_total_usd = t.usd / out.recorded_total_usd
+    out.by_type = sorted(types.values(), key=lambda t: (-(t.usd or 0.0), t.type))
+    if out.recorded_total_usd > 0:
+        out.share_of_total_usd = out.usd / out.recorded_total_usd
+    if out.recorded_real_tokens > 0:
+        out.share_of_total_tokens = out.subagent_real_tokens / out.recorded_real_tokens
+    return out
 
 
 def compute_period_cost(
@@ -156,7 +248,8 @@ def compute_period_cost(
     """
     current_sql, current_params = current_clause(conn)
     rows = conn.execute(
-        "SELECT source_path, session_cost_usd, real_tokens, cost_unpriced_models "
+        "SELECT source_path, session_cost_usd, real_tokens, cost_unpriced_models, "
+        "subagent_cost_usd, subagent_tokens, subagent_by_type_json "
         f"FROM sessions WHERE source_mtime >= ? AND source_mtime < ? AND {current_sql}",  # noqa: S608
         (period_start.timestamp(), period_end.timestamp(), *current_params),
     ).fetchall()
@@ -232,6 +325,7 @@ def compute_period_cost(
         sessions_unpriced=len(rows) - len(fully_priced),
         legacy_rows_excluded=int(legacy_n),
         legacy_total_usd=float(legacy_usd),
+        subagents=_period_subagents(rows),
     )
 
 
@@ -275,7 +369,9 @@ __all__ = [
     "DEFAULT_MONTH_DAYS",
     "DEFAULT_WEEK_DAYS",
     "PeriodCostReport",
+    "PeriodSubagents",
     "ProjectCostBreakdown",
+    "SubagentTypePeriod",
     "compute_period_cost",
     "resolve_period",
 ]

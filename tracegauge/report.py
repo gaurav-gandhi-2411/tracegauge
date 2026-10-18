@@ -277,6 +277,11 @@ def format_human(
                 f"{result.subagent_tokens:,} tokens, {sub_cost} "
                 "(counted here, not in the TOKEN ECONOMY verdict above)."
             )
+            lines.extend(
+                format_subagent_lines(
+                    result.subagents, result.session_cost_usd, bool(result.unpriced_models)
+                )
+            )
         if result.cost_approximate:
             lines.append(
                 "         [APPROXIMATE: some turns had an unresolvable model and are "
@@ -315,6 +320,48 @@ def format_human(
     lines.append(_BORDER)
 
     return "\n".join(lines)
+
+
+_MAX_SUBAGENT_TYPE_LINES = 6  # beyond this the tail collapses into "N more"
+
+
+def _fmt_sub_usd(usd: float | None, is_floor: bool) -> str:
+    """'$X.XX' / '>= $X.XX' for a lower bound / 'unpriced' when nothing was priced."""
+    if usd is None:
+        return "unpriced"
+    # A real but sub-cent price must not read as "$0.00" (that looks like free).
+    amount = "<$0.01" if 0 < usd < 0.005 else format_cost_usd(usd)
+    return f"{'>= ' if is_floor else ''}{amount}"
+
+
+def format_subagent_lines(
+    sub: dict[str, Any], session_usd: float | None = None, partial: bool = False
+) -> list[str]:
+    """Share-of-session line plus one line per subagent type (largest dollars first).
+
+    ``partial`` marks a session total that excludes unpriced turns (then a priced-part share).
+    """
+    by_type: list[dict[str, Any]] = sub.get("by_type") or []
+    if not by_type:
+        return []
+    out: list[str] = []
+    share = sub.get("share_of_session_usd")
+    if share is not None and session_usd is not None:
+        out.append(
+            f"         subagents: {share * 100:.0f}% of this session's "
+            f"{format_cost_usd(session_usd)}{' (priced part)' if partial else ''}; "
+            "per-type tokens are real tokens, as above"
+        )
+    for row in by_type[:_MAX_SUBAGENT_TYPE_LINES]:
+        row_share = row["share_of_session_usd"]
+        share_txt = f", {row_share * 100:.0f}% of session" if row_share is not None else ""
+        out.append(
+            f"           {row['type']}: {row['files']} file(s), {row['real_tokens']:,} tokens, "
+            f"{_fmt_sub_usd(row['usd'], row['usd_is_floor'])}{share_txt}"
+        )
+    if len(by_type) > _MAX_SUBAGENT_TYPE_LINES:
+        out.append(f"           {len(by_type) - _MAX_SUBAGENT_TYPE_LINES} more type(s)")
+    return out
 
 
 def format_json(result: ThreeAxisResult, legacy_rows_excluded: int = 0) -> str:

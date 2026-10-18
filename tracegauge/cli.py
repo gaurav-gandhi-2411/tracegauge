@@ -1269,6 +1269,8 @@ def _run_cost(
                 f"{'s' if b.session_count != 1 else ''})"
             )
 
+    _print_cost_subagents(report)
+
     # Unpriced coverage -- always shown, not gated behind --roi.
     sess_cov = report.session_coverage_pct
     tok_cov = report.token_coverage_pct
@@ -1296,6 +1298,52 @@ def _run_cost(
 
     print(sep)
     return EXIT_OK
+
+
+def _print_cost_subagents(report: PeriodCostReport) -> None:
+    """Subagent share of the period's spend plus a per-type table (see PeriodSubagents)."""
+    sub = report.subagents
+    if sub.sessions_not_recorded:
+        n = sub.sessions_not_recorded
+        print(
+            f"\nSubagents: {n} session{'s' if n != 1 else ''} not recorded, re-score "
+            "(`tracegauge score <path>`) to include."
+        )
+    if not sub.by_type:
+        return  # nothing to report: no subagents among the recorded sessions
+    floor = ">= " if sub.usd_is_floor else ""
+    usd_share = (
+        f"{sub.share_of_total_usd * 100:.0f}% of spend"
+        f"{' (priced part)' if sub.usd_is_floor else ''}"
+        if sub.share_of_total_usd is not None
+        else ""
+    )
+    tok_share = (
+        f"{sub.share_of_total_tokens * 100:.0f}% of tokens"
+        if sub.share_of_total_tokens is not None
+        else ""
+    )
+    shares = ", ".join(x for x in (usd_share, tok_share) if x)
+    print(
+        f"\nSubagents: {floor}${sub.usd:,.2f}"
+        + (f" ({shares})" if shares else "")
+        + f" across {sub.sessions_recorded} session{'s' if sub.sessions_recorded != 1 else ''}"
+        " with a recorded split."
+    )
+    for t in sub.by_type:
+        floor_t = ">= " if t.usd_is_floor else ""
+        if t.usd is None:
+            amount = "unpriced"
+        elif 0 < t.usd < 0.005:
+            amount = f"{floor_t}<$0.01"  # a real sub-cent price must not read as "$0.00"
+        else:
+            amount = f"{floor_t}${t.usd:,.2f}"
+        share = (
+            f", {t.share_of_total_usd * 100:.0f}% of spend"
+            if t.share_of_total_usd is not None
+            else ""
+        )
+        print(f"  {t.type:<24}  {t.files} file(s), {t.real_tokens:,} tokens, {amount}{share}")
 
 
 def _print_cost_roi(report: PeriodCostReport, plan_config: str | None) -> None:

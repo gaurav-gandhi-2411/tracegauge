@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     from tracegauge.alarm_baseline import AlarmThreshold
     from tracegauge.budget import BudgetProjection
     from tracegauge.cache_churn import SessionChurn
-    from tracegauge.cost_period import PeriodCostReport
+    from tracegauge.cost_period import PeriodCostReport, PeriodSubagents
     from tracegauge.impact import ImpactReport
     from tracegauge.live_monitor import LiveSessionState
 
@@ -131,8 +131,35 @@ def cost_payload(report: PeriodCostReport, roi: dict[str, Any] | None) -> dict[s
             }
             for b in report.by_project
         ],
+        subagents=_period_subagents_payload(report.subagents),
         roi=roi,
     )
+
+
+def _period_subagents_payload(sub: PeriodSubagents) -> dict[str, Any]:
+    """`subagents` object of `cost --json` (fixed key set; added 0.17.0)."""
+    return {
+        "sessions_recorded": sub.sessions_recorded,
+        "sessions_not_recorded": sub.sessions_not_recorded,
+        "usd": sub.usd if sub.sessions_recorded else None,
+        "usd_is_floor": sub.usd_is_floor,
+        "share_of_total_usd": sub.share_of_total_usd,
+        "tokens_real": sub.subagent_real_tokens,
+        "share_of_total_tokens": sub.share_of_total_tokens,
+        "by_type": [
+            {
+                "type": t.type,
+                "files": t.files,
+                "requests": t.requests,
+                "tokens": t.tokens,
+                "real_tokens": t.real_tokens,
+                "usd": t.usd,
+                "usd_is_floor": t.usd_is_floor or t.usd is None,
+                "share_of_total_usd": t.share_of_total_usd,
+            }
+            for t in sub.by_type
+        ],
+    }
 
 
 # ----------------------------------------------------------------------------- budget

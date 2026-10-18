@@ -216,6 +216,10 @@ class ThreeAxisResult:
     subagent_cost_usd: float | None = None
     subagent_count: int = 0
     real_tokens_incl_subagents: int = 0
+    # Per-type split of the subagent spend (see build_subagents_summary). Fixed key set, always
+    # present; token figures are BILLED tokens (input incl. cache + output), unlike
+    # subagent_tokens above. Added 0.17.0.
+    subagents: dict[str, Any] = field(default_factory=dict)
 
     # --- code impact (persisted at score time, for the same reason --
     # tool_use.input.old_string/new_string/file_path are only readable
@@ -268,6 +272,63 @@ class ThreeAxisResult:
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
+
+def _share(part: float | None, total: float | None) -> float | None:
+    """part/total, or None when either is unknown or the total is not positive."""
+    if part is None or total is None or total <= 0:
+        return None
+    return part / total
+
+
+def build_subagents_summary(session_cost: SessionCost | None) -> dict[str, Any]:
+    """The ``subagents`` object of the score JSON: totals and a per-type list.
+
+    ``usd`` is None where nothing was priced (never a placeholder 0.0), ``usd_is_floor`` marks
+    a lower bound, and ``share_of_session_usd`` is None when the session total is 0 or
+    unknown. ``by_type`` is sorted by usd (unknown last) descending, then type.
+    """
+    if session_cost is None:
+        return {
+            "count": 0,
+            "tokens": 0,
+            "usd": None,
+            "usd_is_floor": False,
+            "share_of_session_usd": None,
+            "by_type": [],
+        }
+    total = (
+        session_cost.total_usd
+        if cost_is_known(session_cost.total_usd, session_cost.unpriced_models)
+        else None
+    )
+    rows: list[dict[str, Any]] = []
+    for name, tc in session_cost.subagent_by_type.items():
+        usd = tc.usd if tc.usd_known else None
+        rows.append(
+            {
+                "type": name,
+                "files": tc.files,
+                "requests": tc.requests,
+                "tokens": tc.tokens,
+                "real_tokens": tc.real_tokens,
+                "usd": usd,
+                "usd_is_floor": tc.usd_is_floor or not tc.usd_known,
+                "share_of_session_usd": _share(usd, total),
+            }
+        )
+    rows.sort(key=lambda r: (-(r["usd"] or 0.0), r["type"]))
+    priced = [r for r in rows if r["usd"] is not None]
+    # No subagents is a known zero; subagents with nothing priced is unknown (null), never 0.0.
+    usd_total = sum(r["usd"] for r in priced) if priced else (None if rows else 0.0)
+    return {
+        "count": sum(r["files"] for r in rows),
+        "tokens": sum(r["tokens"] for r in rows),
+        "usd": usd_total,
+        "usd_is_floor": any(r["usd_is_floor"] for r in rows),
+        "share_of_session_usd": _share(usd_total, total),
+        "by_type": rows,
+    }
 
 
 def _priced_model_keys(session_cost: SessionCost | None) -> list[str]:
@@ -648,6 +709,7 @@ def score_session(
         subagent_tokens=subagent_tokens,
         subagent_cost_usd=session_cost.subagent_usd if session_cost else None,
         subagent_count=subagent_count,
+        subagents=build_subagents_summary(session_cost),
         real_tokens_incl_subagents=real_tokens + subagent_tokens,
         edit_operations=edit_operations_json,
         adapter_version=record.get("adapter_version"),
@@ -669,6 +731,7 @@ __all__ = [
     "ThreeAxisResult",
     "EfficiencyResult",
     "score_session",
+    "build_subagents_summary",
     "load_baselines",
     "TOKEN_DOMAIN_OF_VALIDITY",
     "TRAJECTORY_DOMAIN_OF_VALIDITY",

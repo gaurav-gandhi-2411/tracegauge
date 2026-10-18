@@ -35,6 +35,16 @@ tracegauge score --pick
 tracegauge score --judge
 ```
 
+Subagent spend is broken out by subagent type (0.17.0): `tracegauge score` prints a line per type
+under the cost note ("subagents: 60% of this session's $X"), and `tracegauge cost` prints the subagent
+share of the period spend and tokens plus a per-type table. Sessions scored before 0.17.0 are listed
+as "not recorded" in `tracegauge cost` until the transcript is re-scored (`tracegauge score <path>`); an unpriced type is
+shown as `unpriced`, never `$0.00`, a price under half a cent as `<$0.01`, and `>=` marks a lower bound.
+When any usage is unpriced, the dollar share is over the priced dollars only (marked "priced part"); the
+token share counts all tokens, in real-token units, and so do the per-type token counts shown in the text
+(the JSON also carries billed tokens per type).
+Fields: [JSON_OUTPUT.md](JSON_OUTPUT.md).
+
 That's the whole frictionless path. Power-user / scripting forms still work:
 
 ```bash
