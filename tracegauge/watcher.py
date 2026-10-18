@@ -37,7 +37,14 @@ from tracegauge.discovery import iter_session_files
 from tracegauge.live_monitor import find_active_session, score_live_session
 from tracegauge.score import ThreeAxisResult, score_session
 from tracegauge.self_baseline import load_or_compute
-from tracegauge.store import file_hash, needs_scoring, open_db, resolve_db_path, upsert_session
+from tracegauge.store import (
+    backfill_turn_counts,
+    file_hash,
+    needs_scoring,
+    open_db,
+    resolve_db_path,
+    upsert_session,
+)
 from tracegauge.waste import annotate_waste_costs, build_waste_entry
 
 logger = logging.getLogger(__name__)
@@ -264,6 +271,15 @@ def run_watcher(
         config.stability_window,
         "ON" if config.background_judge else "OFF",
     )
+
+    # Rows stored before the turn count was recorded carry 0, which keeps every task type on the
+    # bundled band. Fix them once, up front; a failure here must never stop the watcher.
+    try:
+        fixed = backfill_turn_counts(db_path)
+        if fixed["updated"]:
+            logger.info("Recorded the turn count on %d older session(s)", fixed["updated"])
+    except Exception:
+        logger.exception("Turn-count backfill failed — continuing")
 
     while True:
         try:

@@ -993,6 +993,61 @@ def backfill_cost(
     }
 
 
+def backfill_turn_counts(
+    db_path: Path | str | None = None,
+    *,
+    dry_run: bool = False,
+) -> dict[str, int]:
+    """Record the turn count on rows written before it was stored (``turn_count`` = 0).
+
+    Only rows with ``turn_count = 0``, ``real_tokens > 0`` and a ``source_path`` are eligible:
+    NULL rows (legacy; the self-baseline already handles them via ``scope_status``) and empty
+    stubs are left alone. Re-adapts from the source transcript and UPDATEs ``turn_count`` only,
+    never another column. Idempotent. ``dry_run`` counts what would change and writes nothing.
+    Returns ``{"updated", "missing_source", "errors", "unchanged"}``.
+    """
+    from tracegauge.adapt import adapt_session
+
+    if dry_run:
+        # Same read-only handle as backfill_waste's dry run: no migration, no side files.
+        resolved = resolve_db_path(db_path).resolve()
+        mode = "mode=ro" if Path(f"{resolved}-wal").exists() else "immutable=1"
+        conn = sqlite3.connect(f"{resolved.as_uri()}?{mode}", uri=True)
+    else:
+        conn = open_db(db_path)
+    rows = conn.execute(
+        "SELECT session_id, source_path FROM sessions "
+        "WHERE turn_count = 0 AND real_tokens > 0 AND source_path IS NOT NULL"
+    ).fetchall()
+
+    updated = missing = errors = unchanged = 0
+    for session_id, source_path in rows:
+        p = Path(source_path)
+        if not p.exists():
+            missing += 1
+            continue
+        try:
+            record = adapt_session(p)
+            if not _has_usage(record):
+                raise ValueError(f"no usage records in {p.name}")
+            turns = int(record.get("turn_count", 0))
+            if turns <= 0:
+                unchanged += 1
+                continue
+            if not dry_run:
+                conn.execute(
+                    "UPDATE sessions SET turn_count = ? WHERE session_id = ?",
+                    (turns, session_id),
+                )
+                conn.commit()
+            updated += 1
+        except Exception:
+            errors += 1
+
+    conn.close()
+    return {"updated": updated, "missing_source": missing, "errors": errors, "unchanged": unchanged}
+
+
 def _deserialize_row(row: sqlite3.Row) -> dict:
     """Convert a sqlite3.Row to a plain dict with JSON fields decoded."""
     d = dict(row)
@@ -1061,6 +1116,7 @@ __all__ = [
     "upsert_session",
     "backfill_waste",
     "backfill_cost",
+    "backfill_turn_counts",
     "get_session",
     "list_sessions",
 ]
