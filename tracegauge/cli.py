@@ -1071,7 +1071,7 @@ def _run_rescore(
     when any readable row failed to re-score (the others still were), 1 when there is no usable
     store, else 0.
     """
-    from tracegauge.store import backfill_waste, resolve_db_path
+    from tracegauge.store import backfill_turn_counts, backfill_waste, resolve_db_path
 
     resolved = Path(db_path).expanduser() if db_path else resolve_db_path(None)
     if limit is not None and limit < 1:
@@ -1085,6 +1085,15 @@ def _run_rescore(
     except Exception as exc:
         print(f"[ERROR] Cannot rescore the TES store: {exc}", file=sys.stderr)
         return EXIT_USAGE
+
+    # Rows stored before the turn count was recorded keep every task type on the bundled band;
+    # --limit bounds the legacy rescore only. The JSON document is unchanged (text mode reports it).
+    turns: dict[str, int] | None
+    try:
+        turns = backfill_turn_counts(resolved, dry_run=dry_run)
+    except Exception as exc:
+        turns = None
+        print(f"[WARN] Could not record turn counts on older sessions: {exc}", file=sys.stderr)
 
     if json_mode:
         emit(rescore_payload(summary, dry_run=dry_run, limit=limit))
@@ -1104,6 +1113,11 @@ def _run_rescore(
         print("  Rows whose transcript is gone were left exactly as they were.")
     if summary["skipped_stub"]:
         print("  Empty stubs (0 turns, 0 tokens) have nothing to rescore: marked current.")
+    if turns is not None and turns["updated"]:
+        tverb = "would get" if dry_run else "got"
+        print(f"  {turns['updated']} older session(s) {tverb} their turn count recorded.")
+    if turns is not None and turns["errors"]:
+        print(f"  {turns['errors']} older session(s) could not be read for their turn count.")
     return EXIT_ADAPT_ERROR if summary["errors"] else EXIT_OK
 
 

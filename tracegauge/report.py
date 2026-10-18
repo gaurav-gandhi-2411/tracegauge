@@ -377,4 +377,5 @@ def format_json(result: ThreeAxisResult, legacy_rows_excluded: int = 0) -> str:
         "legacy_rows_excluded": legacy_rows_excluded,
         **dataclasses.asdict(result),
     }
+    d.pop("turn_count", None)  # store-only field (ThreeAxisResult.turn_count); not documented JSON
     return json.dumps(d, indent=2, ensure_ascii=False)
