@@ -14,6 +14,7 @@ import pathlib
 import sys
 import tempfile
 from unittest.mock import patch
+from urllib.parse import urlparse
 
 # ── 1. Confirm site-packages (NOT repo) ─────────────────────────────────────
 import tracegauge
@@ -31,7 +32,7 @@ direct_url_path = pkg.parent.parent / "tracegauge-0.8.0.dist-info" / "direct_url
 if direct_url_path.exists():
     du = json.loads(direct_url_path.read_text())
     url = du.get("url", "")
-    assert url.startswith("https://files.pythonhosted.org") or "pypi" in url.lower(), (
+    assert urlparse(url).hostname == "files.pythonhosted.org", (
         f"FAIL: direct_url.json points to {url!r}, not PyPI"
     )
     print(f"[OK] direct_url.json confirms PyPI index install: {url[:60]}…")
