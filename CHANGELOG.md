@@ -29,18 +29,27 @@ same). Three behaviours change and are listed first.
 
 ### Behaviour changes: read before upgrading
 
-1. **A token verdict comes from your own sessions only.** `above_p75` / `within_band` / `below_p25` now need at
-   least 10 of your own waste-free, in-scope sessions of the same task type (banded on their lean half, with the
-   existing stability guard). Before that the token reading says `building (n/10)` and the verdict is
-   `unavailable`; nothing is borrowed from the bundled one-developer table or from any other population, on any
-   surface. Until 0.16.0 `tracegauge score FILE` compared a session with that bundled table while the watcher and
-   dashboard showed no verdict; they now agree. The activation rule was a lean subset of 8 (about 17 waste-free
-   sessions); it is now 10 own sessions with a lean subset of at least 5. `score FILE` reads your store for the
-   count (an empty state when there is none). The one-developer table remains in the package, labelled
-   "reference: 1 developer", only as the live alarm's fallback threshold and as the upper bound of a task type's
-   scope floor. On the maintainer's 51 local sessions (unpublished local measurement), scored in arrival order, 50
-   verdicts were `unavailable` and 1 `below_p25`, and at the end no task type was active. See
-   [docs/UPGRADING.md](docs/UPGRADING.md).
+1. **A token verdict comes from your own sessions only, as a percentile.** A session's token reading is now its
+   place among your other in-scope sessions of the same task type: "about the 70th percentile of your 24 debug-fix
+   sessions", labelled `below_p25` / `within_band` / `above_p75` against the nearest-rank p25 and p75 of those
+   sessions. It is active from 10 of them; before that it says `building (n/10)` and the verdict is `unavailable`.
+   Nothing is borrowed from the bundled one-developer table or from any other population, on any surface. Every
+   in-scope session with usage counts once: waste is not a filter, empty stubs (no usage), sessions below your
+   scope floor and rows scored by the pre-dedupe accounting do not count, and a session already in the store is
+   not compared with itself. The lean-half selection, the 90th-percentile cap and the stability guard of 0.16.0 are
+   removed (they needed about 17 waste-free sessions, and on the maintainer's 51 sessions left none of the five task types active at the end). Until
+   0.16.0 `tracegauge score FILE` compared a session with that bundled table while the watcher and dashboard showed
+   no verdict; they now agree, and `score FILE` reads your store for the count (an empty state when there is none).
+   `score --json` gains `own_percentile` and `own_sessions`. The one-developer table remains in the package,
+   labelled "reference: 1 developer", only as the live alarm's fallback threshold and as the upper bound of a task
+   type's scope floor. `tracegauge quickstart` has no history of yours, so it scores the sample against 12 seeded,
+   invented research-recon sessions held in memory and labelled `SYNTHETIC HISTORY` in the output; nothing is read
+   from or written to your store. Replay on the maintainer's 51 local sessions (the maintainer's unpublished local
+   measurement; the 68 local transcripts minus 17 from three excluded projects), scored in arrival order into a
+   scratch store: 2 of 5 task types were active at the end (debug-fix from its 11th session, infra-deploy from its
+   12th) and 5 of the 51 sessions got a verdict (2 `below_p25`, 1 `within_band`, 2 `above_p75`); the other 46 were
+   `building` or below the scope floor, because ml-eval (9 in-scope sessions), research-recon (9) and
+   feature-build (2) had too few of their own. See [docs/UPGRADING.md](docs/UPGRADING.md).
 2. **The store records each session's turn count, which lets your own baseline activate.** Up to 0.16.0 every
    stored row had `turn_count = 0` (the callers of `upsert_session` never passed it and the helper that backfilled
    it had been removed as unused), so no row ever counted toward a baseline and the dashboard banner counted every
@@ -72,10 +81,11 @@ same). Three behaviours change and are listed first.
   subagent transcript (`unknown` when the file is missing or unreadable). A type with unpriced usage shows
   `unpriced` or a `>=` lower bound, never `$0.00`. Per-type token counts in the text are real tokens, the unit of
   the line above them; the JSON also carries billed tokens. New store column `subagent_by_type_json`. Fields:
-  [docs/JSON_OUTPUT.md](docs/JSON_OUTPUT.md). On the maintainer's 56 priced local sessions (unpublished local
-  measurement) subagents were 53.8% of API-equivalent spend (bootstrap 41.7 to 64.3%).
+  [docs/JSON_OUTPUT.md](docs/JSON_OUTPUT.md). On the maintainer's local transcripts (unpublished local measurement; 60 main transcripts,
+  56 with a price, 32 with subagents) subagents were 53.8% of API-equivalent spend (bootstrap over sessions 41.7
+  to 64.3%).
 - **How often a session has a finding worth acting on**: [docs/ACTIONABLE_FINDINGS.md](docs/ACTIONABLE_FINDINGS.md)
-  (the maintainer's unpublished local measurement: 32 of 50 sessions, Wilson 50.1 to 75.9%; 18.7% of 1,051 public
+  (the maintainer's unpublished local measurement: 32 of 47 sessions with priced usage, Wilson 53.8 to 79.6%; 18.7% of 1,051 public
   SWE-chat sessions, developer-cluster bootstrap 13.9 to 27.6%) and a check of the churn cause by three
   independent language models. Three models of different families (Claude, gpt-oss-120b, qwen3:8b), given only derived numbers and never the detector's label, agreed with its cause label on 158 of 160 sampled events (Fleiss kappa 0.865); this is LLM-consensus agreement with a rule that uses the same facts, not ground truth.
 - **Controlled cache runs** documented in [docs/CACHE_CHURN.md](docs/CACHE_CHURN.md): plan mode on and off and a

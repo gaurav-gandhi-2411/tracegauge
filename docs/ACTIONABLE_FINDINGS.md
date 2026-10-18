@@ -28,16 +28,17 @@ Both populations are the maintainer's unpublished local measurement, taken on ma
 2026-10-18 and recomputed the same day after the maintainer's sessions from three projects were removed from
 the local population; the commands are `tracegauge score <path> --no-judge --json`, one process per session.
 
-| Population | Sessions (priced) | T = $0.10 | **T = $0.50** | T = $1 | T = $5 |
+| Population (sessions with priced usage) | n | T = $0.10 | **T = $0.50** | T = $1 | T = $5 |
 |---|---|---|---|---|---|
-| One developer's local Claude Code sessions | 50 (priced, 3 of them with no usage) | 64.0% | **64.0%** (32 of 50; Wilson 50.1 to 75.9) | 58.0% | 0.0% |
+| One developer's local Claude Code sessions | 47 | 68.1% | **68.1%** (32 of 47; Wilson 53.8 to 79.6) | 61.7% | 0.0% |
 | SWE-chat Claude Code sessions (public data, 337 developer clusters) | 1,051 | 35.8% | **18.7%** (Wilson 16.5 to 21.2; developer-cluster bootstrap 13.9 to 27.6) | 7.2% | 0.5% |
 
 Read these with the caveats:
 
 * **The first row is one person on one machine** (12 projects, the sessions that survived local retention). It
-  says what that user sees, not how common the finding is. A project-cluster bootstrap gives 50.0 to 75.5%
-  but rests on 12 clusters; leaving out any one project keeps the headline between 60.0 and 66.7%.
+  says what that user sees, not how common the finding is. A project-cluster bootstrap gives 52.5 to 80.6%
+  but rests on 12 clusters; leaving out any one project keeps the headline between 64.3 and 71.1%. Of the 51
+  local sessions scored, 4 are not in the denominator (3 with no usage at all, 1 with no price).
 * **The second row has clustered sessions.** One developer holds 25% of the SWE-chat sessions, and 280
   sessions with no user id are treated as separate clusters, which makes the bootstrap interval somewhat too
   narrow. Use the bootstrap interval, not the Wilson one, for that row. Leaving out any one cluster keeps the
@@ -47,7 +48,7 @@ Read these with the caveats:
   (2 of them also have a waste event). The waste detectors are deterministic and conservative; in these sessions
   they rarely reach $0.50. A waste finding of an identical-read pair (RR-A) is priced at $0 by definition.
 * **"Actionable" is not "avoidable".** The count includes churn the tool itself labels not avoidable by a setting
-  (a gap of more than an hour, a compaction). The avoidable share of these sessions was not measured, so 64%
+  (a gap of more than an hour, a compaction). The avoidable share of these sessions was not measured, so 68%
   means "has a cache-churn event of at least $0.50", not "has something you can fix". See
   [CACHE_CHURN.md](CACHE_CHURN.md).
 * Waste dollars (the cost of the redundant turns) and churn dollars (the read-to-write premium) are different
