@@ -370,6 +370,30 @@ def _read_jsonl(path: Path) -> list[dict[str, Any]]:
     return out
 
 
+UNKNOWN_AGENT_TYPE = "unknown"
+_AGENT_TYPE_MAX_LEN = 64  # bound a hostile/garbled meta file; real names are far shorter
+
+
+def read_agent_type(agent_file: Path) -> str:
+    """Subagent type from the sibling ``agent-<id>.meta.json``, or ``"unknown"``.
+
+    Tolerates a missing file, bad JSON, a non-dict payload and a non-string or empty
+    ``agentType``. Control characters are stripped and the result is capped at 64 chars.
+    """
+    meta = agent_file.with_suffix(".meta.json")
+    try:
+        data = json.loads(meta.read_text(encoding="utf-8", errors="replace"))
+    except (OSError, ValueError):
+        return UNKNOWN_AGENT_TYPE
+    if not isinstance(data, dict):
+        return UNKNOWN_AGENT_TYPE
+    raw = data.get("agentType")
+    if not isinstance(raw, str):
+        return UNKNOWN_AGENT_TYPE
+    cleaned = "".join(ch for ch in raw if ch.isprintable()).strip()[:_AGENT_TYPE_MAX_LEN]
+    return cleaned or UNKNOWN_AGENT_TYPE
+
+
 def collect_subagent_usage(session_path: Path) -> dict[str, Any] | None:
     """Roll up the usage of a session's subagent transcripts, or None if it has none.
 
@@ -382,7 +406,9 @@ def collect_subagent_usage(session_path: Path) -> dict[str, Any] | None:
     adapter reads them as empty. Here each API response is counted once (records sharing a
     ``message.id`` are merged by taking the per-field maximum, see ``_message_dedup_key``).
 
-    Returns ``{"file_count", "message_count", "real_tokens", "billed_tokens", "turns"}`` where
+    Returns ``{"file_count", "message_count", "real_tokens", "billed_tokens", "by_type",
+    "turns"}``; ``by_type`` maps each subagent type (``agentType`` of the sibling meta file,
+    ``"unknown"`` when absent) to ``{file_count, message_count, real_tokens, billed_tokens}``.
     ``turns`` are one TurnDigest-shaped dict per (subagent file, model, speed, inference_geo)
     -- cost and attribution are linear in tokens, so aggregating loses nothing, but fast mode
     and the US-only multiplier are per-request properties that scale the whole request, so a
@@ -399,6 +425,7 @@ def collect_subagent_usage(session_path: Path) -> dict[str, Any] | None:
     turns: list[dict[str, Any]] = []
     file_count = 0
     message_count = 0
+    by_type: dict[str, dict[str, int]] = {}
     for agent_file in sorted(sub_dir.glob("agent-*.jsonl")):
         try:
             records = _read_jsonl(agent_file)
@@ -447,6 +474,12 @@ def collect_subagent_usage(session_path: Path) -> dict[str, Any] | None:
         if not by_model:
             continue
         file_count += 1
+        agent_type = read_agent_type(agent_file)
+        tstats = by_type.setdefault(
+            agent_type,
+            {"file_count": 0, "message_count": 0, "real_tokens": 0, "billed_tokens": 0},
+        )
+        tstats["file_count"] += 1
         for agg, (inp, cache_cr, cache_rd, out, cache_1h, tier_known) in sorted(by_model.items()):
             model, speed, geo = agg
             turns.append(
@@ -466,8 +499,12 @@ def collect_subagent_usage(session_path: Path) -> dict[str, Any] | None:
                     "cache_creation_tier_known": tier_known,
                     "speed": speed,
                     "inference_geo": geo,
+                    "agent_type": agent_type,
                 }
             )
+            tstats["message_count"] += requests_by_model[agg]
+            tstats["billed_tokens"] += inp + cache_cr + cache_rd + out
+            tstats["real_tokens"] += inp + cache_cr + out
 
     if not turns:
         return None
@@ -478,6 +515,7 @@ def collect_subagent_usage(session_path: Path) -> dict[str, Any] | None:
         "message_count": message_count,
         "real_tokens": real,
         "billed_tokens": billed,
+        "by_type": by_type,
         "turns": turns,
     }
 
@@ -680,6 +718,9 @@ def adapt_session(session_path: Path) -> dict[str, Any]:
         turns=turns,
         subagent_turns=subagent_turns,
         subagent_count=subagent["file_count"] if subagent else 0,
+        subagent_files_by_type=(
+            {k: v["file_count"] for k, v in subagent["by_type"].items()} if subagent else {}
+        ),
         usage_records=usage_stats["usage_records"],
         usage_records_deduped=usage_stats["usage_records_deduped"],
     )
