@@ -316,9 +316,13 @@ def upsert_session(
        trajectory_domain_of_validity, judge_source_hash); update everything else.
     4. New has no judge AND existing has no judge → full UPDATE.
 
-    turn_count: from the adapted record (adapt_session returns it at top level).
+    turn_count: from the adapted record (adapt_session returns it at top level). When the
+    caller passes none (0), the count carried on ``result.turn_count`` is stored, so every
+    write path records it.
     """
     from datetime import datetime
+
+    turn_count = turn_count if turn_count else result.turn_count
 
     scored_at = datetime.now(UTC).isoformat()
     has_judge = result.judge_verdict is not None
