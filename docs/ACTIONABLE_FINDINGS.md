@@ -24,14 +24,16 @@ not what a subscription bills.
 
 ## Result
 
-Both populations are the maintainer's unpublished local measurement, taken on master (commit 8f2b50d) on
+The first two rows are the maintainer's unpublished local measurement, taken on master (commit 8f2b50d) on
 2026-10-18 and recomputed the same day after the maintainer's sessions from three projects were removed from
-the local population; the commands are `tracegauge score <path> --no-judge --json`, one process per session.
+the local population, then re-run on the published 0.17.0 package on 2026-10-20 (identical for the public rows and for the 46 local sessions whose transcripts
+were still on disk: 29 of 43 = 67.4%). The third row was added on 2026-10-20. The commands are `tracegauge score <path> --no-judge --json`, one process per session.
 
 | Population (sessions with priced usage) | n | T = $0.10 | **T = $0.50** | T = $1 | T = $5 |
 |---|---|---|---|---|---|
 | One developer's local Claude Code sessions | 47 | 68.1% | **68.1%** (32 of 47; Wilson 53.8 to 79.6) | 61.7% | 0.0% |
-| SWE-chat Claude Code sessions (public data; 57 developers plus 280 sessions with no user id, each its own cluster) | 1,051 | 35.8% | **18.7%** (Wilson 16.5 to 21.2; developer-cluster bootstrap 13.9 to 27.6) | 7.2% | 0.5% |
+| SWE-chat v1 subset (public data; 57 developers plus 280 sessions with no user id, each its own cluster) | 1,051 | 35.8% | **18.7%** (Wilson 16.5 to 21.2; developer-cluster bootstrap 13.9 to 27.6) | 7.2% | 0.5% |
+| SWE-chat v2, a random sample (seed 42) of 2,500 of its 12,269 Claude Code sessions; 1,066 developer clusters | 2,451 | 46.9% | **33.7%** (Wilson 31.9 to 35.6; developer-cluster bootstrap 30.9 to 36.7) | 20.8% | 3.9% |
 
 Read these with the caveats:
 
@@ -39,6 +41,10 @@ Read these with the caveats:
   says what that user sees, not how common the finding is. A project-cluster bootstrap gives 52.5 to 80.6%
   but rests on 12 clusters; leaving out any one project keeps the headline between 64.3 and 71.1%. Of the 51
   local sessions scored, 4 are not in the denominator (3 with no usage at all, 1 with no price).
+* **The v1 row is a cheaper subset, the v2 row is the better estimate for public sessions.** All 1,053 v1 sessions are
+  inside v2, but their median session cost is $1.77 against $3.62 in the v2 sample (sessions of $10 or more: 9.9% against
+  27.4%). Inside the random v2 sample, the 208 sessions that are also in v1 give 17.3% and the other 2,243 give 35.3%, so the
+  gap between 18.7% and 33.7% is the choice of sessions, not noise. The two intervals do not overlap.
 * **The second row has clustered sessions.** One developer holds 25% of the SWE-chat sessions, and 280
   sessions with no user id are treated as separate clusters, which makes the bootstrap interval somewhat too
   narrow. Use the bootstrap interval, not the Wilson one, for that row. Leaving out any one cluster keeps the
