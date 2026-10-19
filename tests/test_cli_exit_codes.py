@@ -144,7 +144,7 @@ def test_cost_with_unopenable_store_exits_usage(
     bad_db.mkdir()
     proc = _run(tmp_path, "cost", "--week", "--db-path", str(bad_db))
     assert proc.returncode == EXIT_USAGE
-    assert "Cannot open TES store" in proc.stderr
+    assert "Cannot open tracegauge store" in proc.stderr
 
 
 # ----------------------------------------------------------------------------- monitor
