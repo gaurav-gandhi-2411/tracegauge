@@ -174,13 +174,42 @@ def _extract_tool_result_snippet(content: list[dict[str, Any]]) -> str:
     return "".join(parts)[:_SNIPPET_MAX_CHARS]
 
 
+def _int_or_zero(value: Any) -> int:
+    """A usage count as an int. A JSON ``null`` (seen in real transcripts written through some
+    API proxies), a boolean, a non-numeric string or a container counts as 0 instead of
+    aborting the whole session."""
+    if value is None or isinstance(value, bool):
+        return 0
+    try:
+        return int(value)
+    except (TypeError, ValueError, OverflowError):
+        return 0
+
+
+def _sanitize_record(obj: Any) -> dict[str, Any] | None:
+    """Keep a parsed JSONL line only if it is a JSON object, and make ``message`` and
+    ``message.usage`` dicts so every later ``.get`` is safe. Returns ``None`` for a scalar,
+    list or null line."""
+    if not isinstance(obj, dict):
+        return None
+    message = obj.get("message")
+    if "message" in obj and not isinstance(message, dict):
+        obj["message"] = {}
+    elif isinstance(message, dict):
+        if "usage" in message and not isinstance(message["usage"], dict):
+            message["usage"] = {}
+        if "model" in message and not isinstance(message["model"], str):
+            message["model"] = ""
+    return obj
+
+
 def _parse_usage(usage: dict[str, Any]) -> tuple[int, int, int, int]:
     """Return (input_tokens, cache_creation, cache_read, output_tokens) from a usage dict."""
     return (
-        int(usage.get("input_tokens", 0)),
-        int(usage.get("cache_creation_input_tokens", 0)),
-        int(usage.get("cache_read_input_tokens", 0)),
-        int(usage.get("output_tokens", 0)),
+        _int_or_zero(usage.get("input_tokens", 0)),
+        _int_or_zero(usage.get("cache_creation_input_tokens", 0)),
+        _int_or_zero(usage.get("cache_read_input_tokens", 0)),
+        _int_or_zero(usage.get("output_tokens", 0)),
     )
 
 
@@ -197,14 +226,14 @@ def _parse_cache_tiers(usage: dict[str, Any]) -> tuple[int, int]:
     values are clamped to ``cache_creation_input_tokens`` so a malformed breakdown can never
     price more write tokens than the record billed.
     """
-    total = int(usage.get("cache_creation_input_tokens", 0))
+    total = _int_or_zero(usage.get("cache_creation_input_tokens", 0))
     raw = usage.get("cache_creation")
     if not isinstance(raw, dict) or not (
         "ephemeral_5m_input_tokens" in raw or "ephemeral_1h_input_tokens" in raw
     ):
         return 0, 0
-    five = max(0, int(raw.get("ephemeral_5m_input_tokens") or 0))
-    hour = max(0, int(raw.get("ephemeral_1h_input_tokens") or 0))
+    five = max(0, _int_or_zero(raw.get("ephemeral_5m_input_tokens")))
+    hour = max(0, _int_or_zero(raw.get("ephemeral_1h_input_tokens")))
     return min(hour, total), min(five + hour, total)
 
 
@@ -363,7 +392,7 @@ def _read_jsonl(path: Path) -> list[dict[str, Any]]:
             continue
         try:
             obj = json.loads(line)
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, RecursionError):
             continue
         if isinstance(obj, dict):
             out.append(obj)
@@ -551,12 +580,21 @@ def adapt_session(session_path: Path) -> dict[str, Any]:
         if not line:
             continue
         try:
-            messages.append(json.loads(line))
-        except json.JSONDecodeError:
+            record = _sanitize_record(json.loads(line))
+        except (json.JSONDecodeError, RecursionError):
+            record = None
             print(
                 f"[adapter] WARNING: skipping malformed JSON line in {session_path.name}",
                 file=sys.stderr,
             )
+        else:
+            if record is None:
+                print(
+                    f"[adapter] WARNING: skipping a line that is not a JSON object in {session_path.name}",
+                    file=sys.stderr,
+                )
+        if record is not None:
+            messages.append(record)
 
     # --- Session-level accumulation ------------------------------------------
     turns: list[TurnDigest] = []

@@ -656,13 +656,16 @@ def _count_turns_from_jsonl(source_path: str) -> int | None:
                 msg = _json.loads(line)
             except Exception:
                 continue
+            if not isinstance(msg, dict):
+                continue
             if msg.get("isSidechain"):
                 continue
             msg_type = msg.get("type", "")
             if msg_type == "assistant":
                 turn_count += 1
             elif msg_type == "user":
-                content = msg.get("message", {}).get("content", "")
+                message = msg.get("message")
+                content = message.get("content", "") if isinstance(message, dict) else ""
                 if isinstance(content, str) and content.strip():
                     turn_count += 1
                 elif isinstance(content, list):

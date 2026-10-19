@@ -97,7 +97,7 @@ class AlarmThreshold:
 def normalize_model(model: str | None) -> str:
     """Model id without a date or context-window suffix: ``claude-sonnet-5-5-20260901[1m]`` ->
     ``claude-sonnet-5-5``. Empty/synthetic ids map to ``""`` (era unknown)."""
-    if not model or model.startswith("<"):
+    if not isinstance(model, str) or not model or model.startswith("<"):
         return ""
     name = _MODEL_CONTEXT_SUFFIX.sub("", model.strip())
     return _MODEL_DATE_SUFFIX.sub("", name)
