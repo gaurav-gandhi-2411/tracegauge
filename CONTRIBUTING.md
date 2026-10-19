@@ -3,7 +3,8 @@
 `tracegauge` (import name `tracegauge`; the old `tes` name is a deprecated alias) is a solo-maintained portfolio project —
 contributions are welcome, but the bar is the same one the maintainer
 holds their own commits to: real tests, honest documentation, no
-fabricated numbers.
+fabricated numbers. Everyone taking part is expected to follow the
+[Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Quickstart for your first contribution
 
