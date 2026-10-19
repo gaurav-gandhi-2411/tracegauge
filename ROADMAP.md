@@ -37,7 +37,7 @@ checked against the source rather than guessed. The format notes are in
 
 1. **Codex CLI.** Sessions are JSON Lines, one file each, and the source documents `token_count` events
    that carry cumulative and per-call token usage, so usage can be read from the file the way the Claude
-   Code adapter reads it.
+   Code adapter reads it. This is the first adapter to follow 0.17.0.
 2. **OpenCode.** Sessions are in a SQLite database with per-message token counts, which means a different
    reader (a database, plus a legacy JSON layout from older installs) before the same digest can be built.
 3. **Aider.** Sessions are a markdown chat log, and token usage is a line of English in it, not a
@@ -50,6 +50,23 @@ but none is scheduled. If one of them matters to you, an
 that describes the shape of its files (never their content) is the most useful thing you can send.
 
 Alongside the adapters: the `tes` names are removed in 0.18, as announced in the 0.16.0 entry.
+
+## Open questions from the 0.17.0 measurements
+
+Two things the 0.17.0 numbers raised and did not settle. Neither changes what 0.17.0 does.
+
+- **Task type and tokens per turn in the public data.** In the public SWE-chat sessions the task type
+  explains almost none of the spread in tokens per turn within a developer (0.3% of the variance,
+  developer-cluster bootstrap 95% interval 0.1 to 0.7%; see [docs/METHODOLOGY.md](docs/METHODOLOGY.md)),
+  while in the maintainer's own sessions it explains about a third (the maintainer's unpublished local
+  measurement, 45 sessions in 11 projects). Whether that is a property of the work, of how task types
+  are assigned to the public transcripts, or of one person's small sample is not known. The first step
+  is to test whether the task-type classifier separates sessions as well on the public transcripts as on
+  local ones, before anyone draws a conclusion from the gap.
+- **Using tokens per turn for the context line.** The context line already uses it because it was the
+  most stable of three normalisers across developers
+  ([docs/MULTIDEV_REFERENCE.md](docs/MULTIDEV_REFERENCE.md)). If the classifier work above shows that the public
+  task types are noisy, the context line's per-type cells would need to be rebuilt, not just re-labelled.
 
 ## Explicitly out of scope
 
