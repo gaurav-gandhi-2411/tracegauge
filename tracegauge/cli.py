@@ -2308,7 +2308,7 @@ def main() -> None:
         out_path = (
             Path(args.output).expanduser()
             if args.output
-            # A since-fixed issue: default output derived from the RESOLVED db_path
+            # Issue #17: default output derived from the RESOLVED db_path
             # (same class of fix as intelligence/cache.py's _cache_path)
             # -- not a fixed ~/.tes/ regardless of --db-path/
             # TRACEGAUGE_DB_PATH, which used to drop this file into the real
