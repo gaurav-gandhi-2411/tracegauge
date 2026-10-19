@@ -89,7 +89,7 @@ include = ["tracegauge*", "tes*"]
 exclude = ["tests*", "scripts*", "src*"]
 
 [tool.setuptools.package-data]
-"tracegauge" = ["py.typed", "data/cc_baselines.json", "data/prices.json", "data/quickstart_sample_session.jsonl", "web/templates/*.html", "web/static/brand/*.svg", "web/static/brand/OFL-*.txt", "web/static/fonts/*.woff2", "web/static/fonts/OFL-*.txt"]
+"tracegauge" = ["py.typed", "data/cc_baselines.json", "data/multidev_bands.json", "data/prices.json", "data/quickstart_sample_session.jsonl", "web/templates/*.html", "web/static/brand/*.svg", "web/static/brand/OFL-*.txt", "web/static/fonts/*.woff2", "web/static/fonts/OFL-*.txt"]
 
 [tool.ruff]
 line-length = 100

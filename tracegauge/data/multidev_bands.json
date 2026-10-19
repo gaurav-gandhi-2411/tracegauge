@@ -1,0 +1,240 @@
+{
+  "attribution": "Contains information from SALT-NLP/SWE-chat (https://huggingface.co/datasets/SALT-NLP/SWE-chat), which is made available under the Open Data Commons Attribution License 1.0.",
+  "label": "495 developers (v2)",
+  "method": {
+    "clustering": "each developer carries total weight 1 within a task type",
+    "context_excluded_types": [
+      "feature-build"
+    ],
+    "interval": "percentile bootstrap over developers, B=2000, seed 42",
+    "max_leave_one_developer_out_shift": 0.3,
+    "min_developers": 5,
+    "min_sessions": 10,
+    "task_type_rule": "tracegauge.classify.classify_session (the rule users are scored with)"
+  },
+  "population": {
+    "dataset_version": "v2",
+    "date_range": [
+      "2026-01-15",
+      "2026-09-04"
+    ],
+    "developers": 495,
+    "excluded_sessions": {
+      "partial": 261,
+      "partial_by_reason": {
+        "fewer_responses_than_recorded": 23,
+        "no_usage": 207,
+        "starts_with_summary": 31
+      },
+      "unattributed": 3641
+    },
+    "sessions": 8367,
+    "source": "SALT-NLP/SWE-chat, Claude Code sessions, main (non-subagent) transcripts"
+  },
+  "reference_id": "swechat-v2",
+  "schema": 2,
+  "types": {
+    "debug-fix": {
+      "available": true,
+      "ci95": {
+        "median": [
+          940,
+          1074
+        ],
+        "p25": [
+          628,
+          729
+        ],
+        "p75": [
+          1361,
+          1627
+        ]
+      },
+      "developers": 271,
+      "grid": {
+        "10": 476,
+        "15": 543,
+        "20": 624,
+        "25": 686,
+        "30": 732,
+        "35": 780,
+        "40": 845,
+        "45": 928,
+        "5": 372,
+        "50": 1009,
+        "55": 1074,
+        "60": 1147,
+        "65": 1248,
+        "70": 1337,
+        "75": 1460,
+        "80": 1647,
+        "85": 1929,
+        "90": 2523,
+        "95": 3199
+      },
+      "leave_one_developer_out_max_shift": {
+        "median": 0.002,
+        "p25": 0.004,
+        "p75": 0.004
+      },
+      "median": 1009,
+      "n": 1879,
+      "p25": 686,
+      "p75": 1460
+    },
+    "feature-build": {
+      "available": false,
+      "developers": 432,
+      "inactive_reason": "context_not_published_for_type",
+      "n": 4411
+    },
+    "infra-deploy": {
+      "available": true,
+      "ci95": {
+        "median": [
+          897,
+          1060
+        ],
+        "p25": [
+          560,
+          706
+        ],
+        "p75": [
+          1312,
+          1751
+        ]
+      },
+      "developers": 155,
+      "grid": {
+        "10": 472,
+        "15": 503,
+        "20": 584,
+        "25": 648,
+        "30": 694,
+        "35": 757,
+        "40": 816,
+        "45": 919,
+        "5": 388,
+        "50": 974,
+        "55": 1034,
+        "60": 1122,
+        "65": 1224,
+        "70": 1318,
+        "75": 1480,
+        "80": 1744,
+        "85": 1939,
+        "90": 2368,
+        "95": 3926
+      },
+      "leave_one_developer_out_max_shift": {
+        "median": 0.01,
+        "p25": 0.015,
+        "p75": 0.029
+      },
+      "median": 974,
+      "n": 516,
+      "p25": 648,
+      "p75": 1480
+    },
+    "ml-eval": {
+      "available": true,
+      "ci95": {
+        "median": [
+          990,
+          1263
+        ],
+        "p25": [
+          696,
+          901
+        ],
+        "p75": [
+          1495,
+          2087
+        ]
+      },
+      "developers": 97,
+      "grid": {
+        "10": 590,
+        "15": 645,
+        "20": 750,
+        "25": 809,
+        "30": 872,
+        "35": 921,
+        "40": 987,
+        "45": 1032,
+        "5": 529,
+        "50": 1117,
+        "55": 1223,
+        "60": 1349,
+        "65": 1464,
+        "70": 1588,
+        "75": 1694,
+        "80": 2014,
+        "85": 2291,
+        "90": 2584,
+        "95": 3143
+      },
+      "leave_one_developer_out_max_shift": {
+        "median": 0.008,
+        "p25": 0.001,
+        "p75": 0.009
+      },
+      "median": 1117,
+      "n": 659,
+      "p25": 809,
+      "p75": 1694
+    },
+    "research-recon": {
+      "available": true,
+      "ci95": {
+        "median": [
+          997,
+          1176
+        ],
+        "p25": [
+          630,
+          772
+        ],
+        "p75": [
+          1547,
+          2067
+        ]
+      },
+      "developers": 211,
+      "grid": {
+        "10": 489,
+        "15": 558,
+        "20": 622,
+        "25": 689,
+        "30": 762,
+        "35": 866,
+        "40": 929,
+        "45": 1006,
+        "5": 424,
+        "50": 1088,
+        "55": 1162,
+        "60": 1292,
+        "65": 1402,
+        "70": 1599,
+        "75": 1862,
+        "80": 2089,
+        "85": 2509,
+        "90": 3113,
+        "95": 4357
+      },
+      "leave_one_developer_out_max_shift": {
+        "median": 0.003,
+        "p25": 0.008,
+        "p75": 0.005
+      },
+      "median": 1088,
+      "n": 902,
+      "p25": 689,
+      "p75": 1862
+    }
+  },
+  "unit": {
+    "definition": "real_tokens / turn_count; real_tokens = sum over AI turns of (token_count_input - cache_read + token_count_output)",
+    "name": "real_tokens_per_turn"
+  }
+}

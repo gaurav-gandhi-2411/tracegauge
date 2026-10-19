@@ -19,6 +19,9 @@ from pathlib import Path
 
 # Bundled baseline — inside tracegauge/data/ so the installed package is self-contained.
 BUNDLED_BASELINES_PATH: Path = Path(__file__).parent / "data" / "cc_baselines.json"
+# Developer-clustered percentiles of other developers' sessions: CONTEXT only, never a verdict
+# (tracegauge.context; built by scripts/build_multidev_bands.py).
+MULTIDEV_BASELINES_PATH: Path = Path(__file__).parent / "data" / "multidev_bands.json"
 
 
 def load_baselines(path: Path | str = BUNDLED_BASELINES_PATH) -> dict:
@@ -57,4 +60,9 @@ def compute_real_tokens(record: dict) -> int:
     return total
 
 
-__all__ = ["compute_real_tokens", "load_baselines", "BUNDLED_BASELINES_PATH"]
+__all__ = [
+    "BUNDLED_BASELINES_PATH",
+    "MULTIDEV_BASELINES_PATH",
+    "compute_real_tokens",
+    "load_baselines",
+]

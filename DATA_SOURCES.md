@@ -16,6 +16,11 @@ previously-uncredited attribution gap — see the entry below.
   statistics computed from the data — not just redistributing the data itself —
   requires this notice. Verified directly against the license text
   (opendatacommons.org/licenses/by/1-0/) rather than assumed.
+- **Context percentiles (0.17):** `tracegauge/data/multidev_bands.json` is a percentile table of tokens per
+  turn per task type, built from the Claude Code sessions of SWE-chat v2 (495 developers, 8,367 sessions),
+  developer-weighted, with no developer id, session id, text or per-developer value; a cell with fewer than
+  5 developers is not published. It is a Produced Work under §4.3 and carries the notice next to every use
+  (the context line, `docs/MULTIDEV_REFERENCE.md`, the README). Method: `docs/MULTIDEV_REFERENCE.md`.
 - **What was derived from it:** the B5 generalization validation
   (`research/11-generalization.md`) — the 1,053 SWE-chat CC sessions (58 attributed developers plus 281 sessions with no
   user_id; see the correction below) and the 1.4% (SWE-chat) vs. 6.6% (calibration

@@ -311,3 +311,13 @@ def test_scans_skip_untracked_local_files_but_keep_tracked_ones() -> None:
     tracked = ROOT / "README.md"
     assert tracked in _tracked_only([tracked, ignored])
     assert ignored not in _tracked_only([tracked, ignored])
+
+
+def test_no_paragraph_repeats_a_sentence() -> None:
+    """A merge once left a README paragraph with a block of itself pasted twice."""
+    root = Path(__file__).resolve().parent.parent
+    for rel in ("README.md", "CHANGELOG.md", "docs/METHODOLOGY.md"):
+        for n, line in enumerate((root / rel).read_text(encoding="utf-8").splitlines(), 1):
+            sentences = [s.strip() for s in line.split(". ") if len(s.strip()) > 60]
+            dup = {s for s in sentences if sentences.count(s) > 1}
+            assert not dup, f"{rel}:{n} repeats a sentence: {sorted(dup)[0][:80]}"

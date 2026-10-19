@@ -306,16 +306,19 @@
               </span>
             {% elif bs == "building" %}
               <span class="badge badge-building">building</span>
-              <span class="text-muted" style="margin-left:0.4rem; font-size:0.82rem;">self-baseline not yet active</span>
-            {% elif bs == "corpus" %}
-              <span class="badge badge-corpus">corpus</span>
-              <span class="text-muted" style="margin-left:0.4rem; font-size:0.82rem;">infra-heavy fallback — your own baseline pending</span>
+              <span class="text-muted" style="margin-left:0.4rem; font-size:0.82rem;">building ({{ own_n }}/{{ own_target }} of your own sessions of this type); no verdict is borrowed from another population</span>
             {% else %}
               <span class="badge badge-corpus">b2</span>
               <span class="text-muted" style="margin-left:0.4rem; font-size:0.82rem;">B2 reference corpus (infra-heavy single-developer; self-baseline not yet scored)</span>
             {% endif %}
           </td>
         </tr>
+        {% if context_text %}
+        <tr>
+          <td style="color:var(--graphite); font-size:0.82rem; white-space:nowrap; vertical-align:top;">Context</td>
+          <td class="text-muted" style="font-size:0.82rem;">{{ context_text }}</td>
+        </tr>
+        {% endif %}
         {% if session.baseline_available %}
         <tr>
           <td style="color:var(--graphite); font-size:0.82rem; white-space:nowrap; vertical-align:top;">Band</td>
