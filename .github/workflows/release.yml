@@ -97,14 +97,14 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: sha256-${{ matrix.build }}
           path: SHA256SUMS.txt
           if-no-files-found: error
 
       # The exact files hashed above: publish uploads these, it never rebuilds.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: dist-${{ matrix.build }}
           path: dist/
