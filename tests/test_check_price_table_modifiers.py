@@ -45,6 +45,13 @@ def test_parses_web_search_fast_rates_and_the_residency_rule() -> None:
     assert (mods.geo_us_multiplier, mods.geo_min_version) == (1.1, (4, 6))
 
 
+def test_a_usd_label_in_the_price_cells_still_parses() -> None:
+    # The live page began writing "$8 USD / MTok" in the fast-mode table (2026-10-19).
+    labelled = _PAGE_TEXT.replace(" / MTok", " USD / MTok")
+    assert labelled != _PAGE_TEXT
+    assert parse_vendor_modifiers(labelled) == parse_vendor_modifiers(_PAGE_TEXT)
+
+
 def test_the_bundled_table_matches_the_page_modifiers() -> None:
     assert compare_modifiers(_table(), parse_vendor_modifiers(_PAGE_TEXT)) == ([], [])
 

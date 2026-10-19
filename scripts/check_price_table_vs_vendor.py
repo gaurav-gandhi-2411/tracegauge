@@ -119,7 +119,9 @@ def model_key_from_display_name(display_name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", display_name.lower()).strip("-")
 
 
-_PRICE_RE = re.compile(r"\$\s*([\d,]*\.?\d+)\s*/\s*MTok")
+# "(?:USD\s*)?": the fast-mode table on the live page writes "$8 USD / MTok" (seen 2026-10-19); the
+# model table still writes "$5 / MTok". Both must parse; anything else still fails closed.
+_PRICE_RE = re.compile(r"\$\s*([\d,]*\.?\d+)\s*(?:USD\s*)?/\s*MTok")
 _TIER_RE = re.compile(r"for prompts\s+(up to|over)\s+([\d,]+)\s+tokens", re.IGNORECASE)
 
 # Header cell (lowercased) substring -> VendorRow field. Matched by NAME, not position, so a
