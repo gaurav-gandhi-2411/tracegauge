@@ -78,14 +78,14 @@ whether or not `available` is true.
 `rescored` (on a dry run: how many WOULD be rescored; nothing is written), `skipped_source_missing`,
 `skipped_empty_stub` (rows with 0 turns and 0 tokens, marked current with no number changed),
 `failed`, `not_attempted` (readable rows past `--limit`), `remaining_legacy` (`legacy_rows` minus the
-rows actually rescored or stub-stamped). Exit code 4 when `failed > 0`.
+rows actually rescored or stub-stamped), and `legacy_rows_excluded` (always present, as on the other commands). Exit code 4 when `failed > 0`.
 
 ## `monitor`
 
 `status` is `no_active_session`, `insufficient_data` or `ok`; `active` is false only for the first.
 The session fields (`session_id`, `task_type`, `live_cost_usd`, `priced`, `unpriced_models`,
 `live_context_tokens`, `live_resend_ratio`, `context_resend_dominant`, `ai_turn_count`,
-`domain_of_validity`) are `null` unless `status` is `ok`; `cc_path` and `source_path` are always
+`domain_of_validity`) are `null` unless `status` is `ok`; `cc_path`, `source_path` and `legacy_rows_excluded` are always
 present. `alarm` is `null`, or `{message, resend_pct, baseline_p75_tokens, plan_type, threshold_tokens,
 baseline_tier, baseline_n, baseline_percentile}`, and is non-null exactly when the process exits 3
 (`baseline_p75_tokens` is the legacy name of `threshold_tokens`; it holds the threshold at whatever
@@ -119,7 +119,16 @@ in `tracegauge/patterns_extra.py` is the single check.
 
 The full result (see `tracegauge/score.py::ThreeAxisResult`), with `schema_version`, `command` (`"score"`) and
 `legacy_rows_excluded` (pre-0.15 rows in the store, `0` with no store; a single score is not
-adjusted by them) as the first keys, and
+adjusted by them) as the first keys. The 54 keys of 0.17.0, in order: `schema_version`, `command`, `legacy_rows_excluded`,
+`session_id`, `task_type`, `real_tokens`, `scope_status`, `baseline_available`, `p25`, `p75`, `median`, `band_verdict`,
+`interpretation`, `token_domain_of_validity`, `baseline_source`, `judge_verdict`, `judge_score`, `judge_reasoning`,
+`trajectory_domain_of_validity`, `waste_event_count`, `waste_events`, `waste_domain_of_validity`, `session_cost_usd`,
+`cost_approximate`, `cost_domain_of_validity`, `cost_server_tool_warnings`, `cost_pricing_caveats`, `context_resend_pct`,
+`context_growth_pct`, `output_pct`, `waste_pct`, `cost_unpriced_models`, `priced`, `unpriced_models`, `cost_known`,
+`cost_models`, `subagent_tokens`, `subagent_cost_usd`, `subagent_count`, `real_tokens_incl_subagents`, `subagents`,
+`edit_operations`, `adapter_version`, `cost_version`, `usage_records`, `usage_records_deduped`, `duplicate_usage_records`,
+`dominant_model`, `lever_hint`, `cost_breakdown`, `cache_churn`, `own_percentile`, `own_sessions`, `context`
+(`tests/test_cli_json.py` pins the set). Notes on some of them:
 `lever_hint` (a string only when an absolute finding fires, else `null`: detected waste of at least
 $0.50, or at least 10.0% of cost and $0.05, or output at 40.0% of cost or more, compared unrounded; "context dominates" is never
 one) and `cost_breakdown` (additive, informational, `null` when attribution was unavailable):

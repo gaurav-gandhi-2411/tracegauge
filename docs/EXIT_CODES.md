@@ -1,6 +1,6 @@
 # Exit codes
 
-Every `tracegauge` / `tracegauge` command exits with one of these codes. They are a contract for scripts,
+Every `tracegauge` command (and its aliases `tgauge` and the deprecated `tes`) exits with one of these codes. They are a contract for scripts,
 Claude Code hooks and CI: new codes may be added, existing ones are never renumbered. The same
 table is in each command's `--help` epilog. The constants live in `tracegauge/exit_codes.py`.
 

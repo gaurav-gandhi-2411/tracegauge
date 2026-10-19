@@ -822,7 +822,7 @@ the new fail-closed behavior and the bumped `as_of`.
 originally said "_pending_" — stale by the time of the 0.11.0 release; corrected here.
 
 **What changed, and why:** `tes/cost.py` and `tes/_digest.py` are now additionally available
-under Apache-2.0 (see [LICENSE-APACHE](LICENSE-APACHE)), on top of this project's
+under Apache-2.0 (see `LICENSE-APACHE`, a file that 0.16.0 replaced when the whole project moved to Apache-2.0), on top of this project's
 AGPL-3.0-only license — everything else in the repo stays AGPL-3.0-only. Standard SPDX
 dual-license header (`AGPL-3.0-only OR Apache-2.0`) on both files, no bespoke terms. This
 exists so a downstream package —
