@@ -42,7 +42,9 @@ OUT_PATH = REPO_ROOT / "tracegauge" / "data" / "multidev_bands.json"
 
 SEED = 42  # house rule: every stochastic step is seeded
 BOOTSTRAP_RESAMPLES = 2000
-MIN_DEVELOPERS = 5  # GG's cell-size rule: no cell backed by fewer developers is published
+MIN_DEVELOPERS = (
+    5  # the maintainer's cell-size rule: no cell backed by fewer developers is published
+)
 MIN_SESSIONS = 10  # same activation floor as the one-developer table
 MAX_LODO_SHIFT = 0.30  # a published band moves at most 30% when any one developer is dropped
 TASK_TYPES = ("ml-eval", "debug-fix", "infra-deploy", "research-recon", "feature-build")
