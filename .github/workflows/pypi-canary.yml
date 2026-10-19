@@ -92,3 +92,5 @@ jobs:
               --body "Canary passed on the next scheduled run -- closing. Re-opens automatically if it fails again."
             gh issue close "$number" --repo "$GITHUB_REPOSITORY"
           fi
+
+# Re-saved when the repository was recreated (2026-10): GitHub registers a workflow only when a push changes its file.

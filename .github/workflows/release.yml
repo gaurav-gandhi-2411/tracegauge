@@ -260,3 +260,5 @@ jobs:
 
       - name: Publish to PyPI (Trusted Publishing -- OIDC, no token)
         uses: pypa/gh-action-pypi-publish@release/v1
+
+# Re-saved when the repository was recreated (2026-10): GitHub registers a workflow only when a push changes its file.
