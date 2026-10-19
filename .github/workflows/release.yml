@@ -128,7 +128,7 @@ jobs:
     needs: [preflight-build]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: sha256-*
       - name: The sdist and wheel sha256 of build a and build b are identical
@@ -151,15 +151,15 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.ref }}
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: sha256-*
           path: sums
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: dist-a
           path: dist-a
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: dist-b
           path: dist-b
@@ -237,11 +237,11 @@ jobs:
           python-version: "3.11"
 
       # No rebuild: the files uploaded below are the ones the preflight built, hashed and compared.
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: sha256-*
           path: sums
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: dist-a
           path: dist
