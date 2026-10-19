@@ -357,7 +357,7 @@ def score_path(
     """Adapt, detect waste, optionally judge, score, and print one session.
 
     store_conn is an optional open sqlite3.Connection. When provided the
-    ThreeAxisResult is written to the TES store after printing. Any store
+    ThreeAxisResult is written to the tracegauge store after printing. Any store
     write failure is swallowed — it must never break CLI output.
     """
     try:
@@ -634,7 +634,7 @@ def _run_serve(
     # First-run orientation — the tool tells you what it found and where to look.
     found = len(_recent_sessions(cc_path))
     already_scored = _store_session_count(db_path)
-    print("TES service starting...")
+    print("tracegauge service starting...")
     print(f"  Dashboard:        http://127.0.0.1:{port}/")
     print(f"  Watching:         {cc_path}  ({found} session file(s) found)")
     if not already_scored:
@@ -737,7 +737,7 @@ def _run_corpus(args: argparse.Namespace) -> None:
         try:
             conn = _open_db(db_path)
         except Exception as exc:
-            print(f"[ERROR] Cannot open TES store: {exc}", file=sys.stderr)
+            print(f"[ERROR] Cannot open tracegauge store: {exc}", file=sys.stderr)
             sys.exit(1)
 
         anonymous = getattr(args, "anonymous", False)
@@ -891,7 +891,7 @@ def _run_impact(*, db_path: str | None = None, top_n: int = 10, json_mode: bool 
     try:
         conn = open_db(resolved_db)
     except Exception as exc:
-        print(f"[ERROR] Cannot open TES store: {exc}", file=sys.stderr)
+        print(f"[ERROR] Cannot open tracegauge store: {exc}", file=sys.stderr)
         return EXIT_USAGE
 
     rows = list_sessions(conn, limit=5000, offset=0)
@@ -1102,12 +1102,12 @@ def _run_rescore(
         print("[ERROR] --limit must be at least 1.", file=sys.stderr)
         return EXIT_USAGE
     if not resolved.exists():
-        print(f"[ERROR] No TES store at {resolved}.", file=sys.stderr)
+        print(f"[ERROR] No tracegauge store at {resolved}.", file=sys.stderr)
         return EXIT_USAGE
     try:
         summary = backfill_waste(resolved, only_legacy=True, dry_run=dry_run, limit=limit)
     except Exception as exc:
-        print(f"[ERROR] Cannot rescore the TES store: {exc}", file=sys.stderr)
+        print(f"[ERROR] Cannot rescore the tracegauge store: {exc}", file=sys.stderr)
         return EXIT_USAGE
 
     # Rows stored before the turn count was recorded keep every task type on the bundled band;
@@ -1159,7 +1159,7 @@ def _run_budget(
     try:
         conn = open_db(resolved_db)
     except Exception as exc:
-        print(f"[ERROR] Cannot open TES store: {exc}", file=sys.stderr)
+        print(f"[ERROR] Cannot open tracegauge store: {exc}", file=sys.stderr)
         return EXIT_USAGE
 
     projection = compute_budget_projection(conn, window_days=window_days)
@@ -1232,7 +1232,7 @@ def _run_cost(
     try:
         conn = open_db(resolved_db)
     except Exception as exc:
-        print(f"[ERROR] Cannot open TES store: {exc}", file=sys.stderr)
+        print(f"[ERROR] Cannot open tracegauge store: {exc}", file=sys.stderr)
         return EXIT_USAGE
 
     report = compute_period_cost(conn, period_start, period_end, period_label=period_label)
@@ -1717,7 +1717,7 @@ def main() -> None:
         "serve",
         help="Launch background watcher + localhost dashboard (token+waste auto-scoring).",
         description=(
-            "Start the TES service: a background scan loop that auto-scores finished CC sessions "
+            "Start the tracegauge service: a background scan loop that auto-scores finished CC sessions "
             "(token economy + deterministic waste) and a web dashboard on localhost. "
             "Judge is OFF by default — token+waste run continuously, trajectory requires --background-judge."
         ),
@@ -2274,7 +2274,7 @@ def main() -> None:
         try:
             conn = _open_db(db_path)
         except Exception as exc:
-            print(f"[ERROR] Cannot open TES store: {exc}", file=sys.stderr)
+            print(f"[ERROR] Cannot open tracegauge store: {exc}", file=sys.stderr)
             sys.exit(1)
 
         contributor_id: str | None = None if args.anonymous else get_or_create_contributor_id()

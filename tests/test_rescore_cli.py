@@ -81,7 +81,7 @@ def test_cli_usage_errors(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     code, _, err = _run(monkeypatch, capsys, "rescore", "--db-path", str(tmp_path / "none.db"))
-    assert code == 1 and "No TES store" in err
+    assert code == 1 and "No tracegauge store" in err
     assert not (tmp_path / "none.db").exists()  # rescore never creates a store
     s = build_mixed_store(tmp_path)
     code, _, err = _run(monkeypatch, capsys, "rescore", "--limit", "0", "--db-path", str(s.db))

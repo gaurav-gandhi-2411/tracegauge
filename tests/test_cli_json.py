@@ -319,7 +319,7 @@ def test_cost_json_error_goes_to_stderr_and_stdout_stays_empty(
     code, out, err = _run(monkeypatch, capsys, "cost", "--week", "--json", "--db-path", str(bad_db))
     assert code == 1
     assert out == ""
-    assert "Cannot open TES store" in err
+    assert "Cannot open tracegauge store" in err
 
 
 # ----------------------------------------------------------------------------- budget
