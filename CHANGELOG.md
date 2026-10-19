@@ -6,12 +6,12 @@ conventions.
 
 A note on version numbers: the published PyPI artifacts are `0.1.0`, `0.3.0`, `0.3.1`, `0.5.0`,
 `0.6.0`, `0.7.0`, `0.7.1`, `0.8.0`, `0.10.0`, `0.10.1`, `0.10.2`, `0.11.0`, `0.11.1`, `0.12.0`,
-`0.12.1`, `0.12.2`, `0.12.3`, `0.12.4`, `0.13.0`, `0.14.0`, `0.15.0`, and `0.16.0` (the current release; the earlier ones confirmed live against PyPI's own JSON API;
+`0.12.1`, `0.12.2`, `0.12.3`, `0.12.4`, `0.13.0`, `0.14.0`, `0.15.0`, `0.16.0`, and `0.17.0` (the current release; the earlier ones confirmed live against PyPI's own JSON API;
 this note previously stopped enumerating at `0.10.2` for four releases running — corrected here
 rather than left standing, per the same "nothing re-checks this note against reality" gap
 RELEASING.md's own incident section already names). Versions `0.2.0` and `0.4.0` were built and
 tagged internally but never published to PyPI. `0.9.0` is built, tested, and committed, but
-**deliberately not published** — see its entry for why (corpus stays dormant). `0.16.0` is the
+**deliberately not published** — see its entry for why (corpus stays dormant). `0.17.0` is the
 **current release**.
 
 `0.12.3`, `0.12.4` and `0.13.0` are **yanked** on PyPI (reason: "ImportError on Python 3.10 (datetime.UTC); fixed in
@@ -21,7 +21,7 @@ still installs, with pip's yanked-release warning. Checked against the real inde
 
 ## [Unreleased]
 
-## [0.17.0] - unreleased — token verdicts from your own sessions only, a multi-developer context line, subagent spend by type, contributor on-ramp
+## [0.17.0] - 2026-10-19 — token verdicts from your own sessions only, a multi-developer context line, subagent spend by type, contributor on-ramp
 
 The scoring math, the waste detectors, the cache-churn detector and the prices are unchanged
 (`ADAPTER_VERSION` and `COST_VERSION` did not move; every existing cost and waste figure in a report is the
