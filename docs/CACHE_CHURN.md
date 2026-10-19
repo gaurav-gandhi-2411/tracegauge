@@ -240,6 +240,11 @@ has an `UNEXPLAINED` event, so there is nothing yet to test a rule on and none i
   measurement), which is consistent with the rules but is not a controlled test. The `TTL_GAP` cause
   has a small controlled run behind it (next section); a labelled sample for the other causes is still
   to be done.
+* **Cause check by three language models (LLM-consensus agreement, not ground truth):** on 160 sampled
+  events three language models, shown only derived numbers and never the detector's label, agreed with the
+  detector's cause on 158 (98.8%, Wilson 95.6 to 99.7), Fleiss kappa 0.865. Per judge and per cause below.
+  The cards hold the same facts the rules use, so this checks that the rules follow from the documented
+  mechanisms, not that the physical cause is right. See [Per-judge agreement](#per-judge-agreement).
 * **Controlled runs (the maintainer's unpublished local measurement, 16 calls in total):** see
   [Controlled runs](#controlled-runs) below. They confirm the lifetime rule; the few settings that
   were changed did not make the cache collapse inside the lifetime (thinking was not really varied).
@@ -260,3 +265,52 @@ has an `UNEXPLAINED` event, so there is nothing yet to test a rule on and none i
   of 0.5 is the same physical event, and only one side is counted. In the maintainer's real
   sessions no pair fell between 0.3 and 0.9 of the previous prefix, so this edge is rarely
   exercised there (the maintainer's unpublished local measurement).
+
+## Per-judge agreement
+
+The sample is 160 events (40 per cause, at most 2 per session within a cause, seed 42) from the maintainer's
+local sessions (29) and 1,051 public SWE-chat sessions (131); the maintainer's unpublished local measurement
+for the local part. Each judge saw the same cards in its own order, with the label order shuffled, at
+temperature 0, and had first labelled at least 90% of 40 seeded unambiguous cards correctly (Claude 40/40,
+gpt-oss-120b 40/40, qwen3:8b with thinking on 40/40; with thinking off it scored 30/40 and was not used). Wilson 95%
+intervals; the intervals treat events as independent although up to 4 come from one session.
+
+| Judge | `TTL_GAP` | `MODEL_SWITCH` | `COMPACTION` | `UNEXPLAINED` | All |
+|---|---|---|---|---|---|
+| Claude (`claude -p`) | **25/40 = 62.5%** (47.0 to 75.8) | 40/40 = 100% (91.2 to 100) | 40/40 = 100% (91.2 to 100) | 38/40 = 95.0% (83.5 to 98.6) | 143/160 = 89.4% (83.6 to 93.3) |
+| gpt-oss-120b | 40/40 = 100% (91.2 to 100) | 38/40 = 95.0% (83.5 to 98.6) | 39/40 = 97.5% (87.1 to 99.6) | 39/40 = 97.5% (87.1 to 99.6) | 156/160 = 97.5% (93.7 to 99.0) |
+| qwen3:8b (thinking) | 38/40 = 95.0% (83.5 to 98.6) | 37/40 = 92.5% (80.1 to 97.4) | 40/40 = 100% (91.2 to 100) | 40/40 = 100% (91.2 to 100) | 155/160 = 96.9% (92.9 to 98.7) |
+| **Majority of the three** | 40/40 = 100% (91.2 to 100) | 38/40 = 95.0% (83.5 to 98.6) | 40/40 = 100% (91.2 to 100) | 40/40 = 100% (91.2 to 100) | **158/160 = 98.8%** (95.6 to 99.7) |
+
+Pairwise Cohen kappa: Claude with gpt-oss 0.826, Claude with qwen3 0.818, gpt-oss with qwen3 0.950. All three
+judges agreed with each other on 136 of the 160 events. A judge's invalid answers count as disagreement for that
+judge (gpt-oss 1, qwen3 4); a vote with no majority counts as a miss for the majority.
+
+**Why Claude is at 62.5% on `TTL_GAP`.** It labelled 15 of the 40 `TTL_GAP` events `UNEXPLAINED`, including events
+whose gap was hours against a one-hour lifetime. Asked to add a reason for six of those cards (a diagnostic, not part of the
+sample), on four it gave the same reason (on the other two it labelled `TTL_GAP` when asked again, so single answers are not perfectly repeatable): the current request still read part of the prefix from the cache (for
+example 31,740 tokens), which it took to be inconsistent with the whole prefix having expired. The card
+did not say that a short shared prefix (the system prompt, the tool definitions) can still be read while the
+longer conversation part after it is written again, so this is most likely a gap in the card rather than a Claude error. That rests on the reasons given on four
+cards and was not tested separately; the other judges did not stumble on it.
+
+**The card change and the partial re-run (not used in the figures).** One neutral sentence about partial reads was
+added to the glossary of the cards (a short shared prefix such as the system prompt and tool definitions can still be
+read while the longer conversation part after it is written again), and Claude was re-run on the same cards. The
+re-run was stopped by the system after 60 of the 160 cards (low memory), and it has deliberately not been completed or
+resumed, so it is a partial result. The same 60 cards, Claude's answers agreeing with the detector, original cards
+then card with the sentence:
+
+| Cause (detector label) | Original cards | Card with the sentence |
+|---|---|---|
+| `TTL_GAP` | 11/19 | 19/19 |
+| `MODEL_SWITCH` | 16/16 | 16/16 |
+| `COMPACTION` | 11/11 | 11/11 |
+| `UNEXPLAINED` | 13/14 | 9/14 |
+| All 60 | 51/60 | 55/60 |
+
+12 of the 60 answers changed. The sentence fixed the `TTL_GAP` misses and also pushed Claude to call some
+no-mechanism events `TTL_GAP` (it gave `TTL_GAP` 24 times against 19 events with that detector label), so it
+trades one error for another. The 60 are the first 60 cards of a seeded shuffle of the 160, so they are a
+random subset, but 11 to 19 events per cause is too few for a per-cause precision estimate. All figures in the
+table above, and the consensus 158/160, are for the cards as originally used.

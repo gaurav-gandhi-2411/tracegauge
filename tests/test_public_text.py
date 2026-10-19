@@ -321,3 +321,27 @@ def test_no_paragraph_repeats_a_sentence() -> None:
             sentences = [s.strip() for s in line.split(". ") if len(s.strip()) > 60]
             dup = {s for s in sentences if sentences.count(s) > 1}
             assert not dup, f"{rel}:{n} repeats a sentence: {sorted(dup)[0][:80]}"
+
+
+def test_ratio_of_sums_interval_is_a_bootstrap_not_wilson() -> None:
+    """The subagent share is a ratio of sums, so a Wilson (binomial) interval does not apply to it."""
+    paths = [
+        "README.md",
+        "CHANGELOG.md",
+        "DATA_SOURCES.md",
+        *sorted(str(p.relative_to(ROOT)).replace("\\", "/") for p in (ROOT / "docs").rglob("*.md")),
+    ]
+    for rel in paths:
+        # A hard-wrapped bullet or paragraph is one block: the interval may sit on a later line than the claim.
+        block: list[str] = []
+        blocks: list[str] = []
+        for line in [*(ROOT / rel).read_text(encoding="utf-8").splitlines(), ""]:
+            if not line.strip() or line.lstrip().startswith(("- ", "|", "#")):
+                blocks.append(" ".join(block))
+                block = [line] if line.strip() else []
+            else:
+                block.append(line)
+        for text in blocks:
+            low = text.lower()
+            if "53.8% of api-equivalent" in low or "subagent share" in low:
+                assert "wilson" not in low, f"{rel} labels a ratio-of-sums interval as Wilson"

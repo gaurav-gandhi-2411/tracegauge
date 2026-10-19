@@ -7,7 +7,7 @@
   </picture>
 </p>
 
-tracegauge reads your Claude Code session transcripts on your own machine and shows where the tokens and dollars went, which retries were pure waste, and which cache re-writes cost you money.
+tracegauge reads your Claude Code session transcripts on your own machine and shows where the tokens and dollars went, which retries were pure waste, which cache re-writes cost you money, and what your subagents cost by type.
 
 [![CI](https://github.com/gaurav-gandhi-2411/tracegauge/actions/workflows/ci.yml/badge.svg)](https://github.com/gaurav-gandhi-2411/tracegauge/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](https://github.com/gaurav-gandhi-2411/tracegauge/blob/master/LICENSE)
@@ -76,6 +76,20 @@ The cache-churn detector, on a second synthetic session with three planted cache
 
 Every figure in this block is rounded independently, and totals use the unrounded values. So the three cause rows add to $0.39 while the $0.38 total is the sum of the unrounded amounts, and the $0.21 "plausibly avoidable" figure sits beside model-switch and TTL-gap rows ($0.16 + $0.06) that add to $0.22.
 
+Subagent spend, on a third synthetic session (six subagent transcripts of three types, seeded generator, `tests/subagent_synth.py`). Claude Code writes each subagent's type next to its transcript; `tracegauge score` splits the subagent part of the cost by that type, and `tracegauge cost` does the same for a period. `--json` carries the same figures.
+
+```text
+         Includes 6 subagent transcript(s): 243,100 tokens, $1.89 (counted here, not in the TOKEN ECONOMY verdict above).
+         subagents: 82% of this session's $2.31; per-type tokens are real tokens, as above
+           executor: 3 file(s), 149,799 tokens, $1.19, 51% of session
+           verifier: 2 file(s), 76,188 tokens, $0.57, 25% of session
+           Explore: 1 file(s), 17,113 tokens, $0.12, 5% of session
+```
+
+The three type rows add to $1.88 while the subagent total is $1.89, because each figure is rounded independently and the total uses the unrounded values.
+
+How often does a session have something like this? On one developer's 47 sessions with priced usage, 68% (32) have a finding of at least $0.50, nearly all of it cache churn; on 1,051 public SWE-chat sessions it is 19% (cluster-bootstrap interval 14 to 28%). The first figure is one person on one machine, the second is clustered by developer, and "finding" does not mean "avoidable". Both are the maintainer's unpublished local measurements; method and caveats are in [docs/ACTIONABLE_FINDINGS.md](https://github.com/gaurav-gandhi-2411/tracegauge/blob/master/docs/ACTIONABLE_FINDINGS.md).
+
 ## Commands
 
 `tgauge` is a short alias for `tracegauge`. The old `tes` command still works until 0.18 ([migration guide](https://github.com/gaurav-gandhi-2411/tracegauge/blob/master/docs/MIGRATING_FROM_TES.md)). Full usage and the SDK: [docs/COMMANDS.md](https://github.com/gaurav-gandhi-2411/tracegauge/blob/master/docs/COMMANDS.md).
@@ -95,7 +109,7 @@ Every figure in this block is rounded independently, and totals use the unrounde
 
 ## Supported agents
 
-Claude Code is supported. Other agents are planned; none is supported today. Each needs its own transcript adapter and a fresh validation run, not a flag.
+Claude Code is supported. Other agents are planned; none is supported today. Each needs its own transcript adapter and a fresh validation run, not a flag. The order planned is in the [roadmap](https://github.com/gaurav-gandhi-2411/tracegauge/blob/master/ROADMAP.md), and [docs/ADAPTERS.md](https://github.com/gaurav-gandhi-2411/tracegauge/blob/master/docs/ADAPTERS.md) is the contract an adapter has to meet.
 
 ## Methodology
 

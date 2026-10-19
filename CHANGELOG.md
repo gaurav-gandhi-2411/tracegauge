@@ -6,12 +6,12 @@ conventions.
 
 A note on version numbers: the published PyPI artifacts are `0.1.0`, `0.3.0`, `0.3.1`, `0.5.0`,
 `0.6.0`, `0.7.0`, `0.7.1`, `0.8.0`, `0.10.0`, `0.10.1`, `0.10.2`, `0.11.0`, `0.11.1`, `0.12.0`,
-`0.12.1`, `0.12.2`, `0.12.3`, `0.12.4`, `0.13.0`, `0.14.0`, and `0.15.0` (the current release; the earlier ones confirmed live against PyPI's own JSON API;
+`0.12.1`, `0.12.2`, `0.12.3`, `0.12.4`, `0.13.0`, `0.14.0`, `0.15.0`, and `0.16.0` (the current release; the earlier ones confirmed live against PyPI's own JSON API;
 this note previously stopped enumerating at `0.10.2` for four releases running — corrected here
 rather than left standing, per the same "nothing re-checks this note against reality" gap
 RELEASING.md's own incident section already names). Versions `0.2.0` and `0.4.0` were built and
 tagged internally but never published to PyPI. `0.9.0` is built, tested, and committed, but
-**deliberately not published** — see its entry for why (corpus stays dormant). `0.15.0` is the
+**deliberately not published** — see its entry for why (corpus stays dormant). `0.16.0` is the
 **current release**.
 
 `0.12.3`, `0.12.4` and `0.13.0` are **yanked** on PyPI (reason: "ImportError on Python 3.10 (datetime.UTC); fixed in
@@ -20,6 +20,104 @@ installs (`pip install tracegauge`, `tracegauge<0.14`) but not from an exact pin
 still installs, with pip's yanked-release warning. Checked against the real index on 2026-10-09.
 
 ## [Unreleased]
+
+## [0.17.0] - unreleased — token verdicts from your own sessions only, a multi-developer context line, subagent spend by type, contributor on-ramp
+
+The scoring math, the waste detectors, the cache-churn detector and the prices are unchanged
+(`ADAPTER_VERSION` and `COST_VERSION` did not move; every existing cost and waste figure in a report is the
+same). Three behaviours change and are listed first.
+
+### Behaviour changes: read before upgrading
+
+1. **A token verdict comes from your own sessions only, as a percentile.** A session's token reading is now its
+   place among your other in-scope sessions of the same task type: "about the 70th percentile of your 24 debug-fix
+   sessions", labelled `below_p25` / `within_band` / `above_p75` against the p25 and p75 of those
+   sessions. It is active from 10 of them; before that it says `building (n/10)` and the verdict is `unavailable`.
+   Nothing is borrowed from the bundled one-developer table or from any other population on the command line, the watcher or the dashboard (a program that calls `score_session` with no state still gets the raw table result, as before). Every
+   in-scope session with usage counts once: waste is not a filter, empty stubs (no usage), sessions below your
+   scope floor and rows scored by the pre-dedupe accounting do not count, and a session already in the store is
+   not compared with itself. The cost framing ("cost vs your usual") keeps its own conservative reference of waste-free, lower-half sessions; it is not the token verdict. The lean-half selection, the 90th-percentile cap and the stability guard of 0.16.0 are
+   removed (they needed about 17 waste-free sessions, and on the maintainer's 51 sessions left none of the five task types active at the end). Until
+   0.16.0 `tracegauge score FILE` compared a session with that bundled table while the watcher and dashboard showed
+   no verdict; they now agree, and `score FILE` reads your store for the count (an empty state when there is none).
+   `score --json` gains `own_percentile` and `own_sessions`. The one-developer table remains in the package,
+   labelled "reference: 1 developer", only as the live alarm's fallback threshold and as the upper bound of a task
+   type's scope floor. `tracegauge quickstart` has no history of yours, so it scores the sample against 12 seeded,
+   invented research-recon sessions held in memory and labelled `SYNTHETIC HISTORY` in the output; nothing is read
+   from or written to your store. Replay on the maintainer's 51 local sessions (the maintainer's unpublished local
+   measurement; the 68 local transcripts minus 17 from three excluded projects), scored in arrival order into a
+   scratch store: 2 of 5 task types were active at the end (debug-fix from its 11th session, infra-deploy from its
+   12th) and 5 of the 51 sessions got a verdict (2 `below_p25`, 1 `within_band`, 2 `above_p75`); the other 46 were
+   `building` or below the scope floor: debug-fix and infra-deploy sessions that arrived before those types had
+   10 earlier ones (10 and 11 sessions), and all of ml-eval (10 sessions, 9 in scope), research-recon (9) and
+   feature-build (6 sessions, 2 in scope), which never reached 10 of their own. See [docs/UPGRADING.md](docs/UPGRADING.md).
+2. **The store records each session's turn count, which lets your own baseline activate.** Up to 0.16.0 every
+   stored row had `turn_count = 0` (the callers of `upsert_session` never passed it and the helper that backfilled
+   it had been removed as unused), so no row ever counted toward a baseline and the dashboard banner counted every
+   session as an empty stub. From 0.17.0 a session's result carries its turn count, `upsert_session` stores it,
+   and `tracegauge rescore` and the watcher's start-up record it for older rows (only that one column is
+   written). The scope floor printed for a task type is derived from your own turns (p10, never below 20) once you
+   have 10 sessions of the type, instead of the corpus floor.
+3. **`tracegauge cost` and `tracegauge score` show subagent spend by type.** See Added. Rows stored by earlier
+   versions show as "not recorded" in the period report until the transcript is scored again.
+
+### Added
+
+- **A multi-developer context line.** `score` prints, under the token reading, where the session's tokens per
+  turn fall among other developers' sessions of the same task type: "about the Nth percentile of M developers'
+  sessions", with the population, source, dates and the ODC-BY notice, and "Not a verdict". It is not used in any
+  verdict and never says above or below a band. `score --json` gains a fixed-key `context` object (`null` when
+  hidden). Hidden for `feature-build` (the classifier's fall-through type), for a task type whose cell was not
+  published and when the turn count is unknown. The table is built from the Claude Code sessions of SWE-chat v2
+  (495 developers, 8,367 sessions, created 2026-01-15 to 2026-09-04; developer-weighted; a cell needs at least 5
+  developers and moves at most 30% when any developer is left out; no ids, text or per-developer values).
+  Tokens per turn was chosen before the build because it was the most stable of three normalisers on both
+  dataset releases; v1 (57 developers) was built under the same rules and rejects the ml-eval cell. Method,
+  both tables side by side and limits: [docs/MULTIDEV_REFERENCE.md](docs/MULTIDEV_REFERENCE.md). Contains
+  information from SALT-NLP/SWE-chat, made available under the ODC Attribution License 1.0.
+- **Subagent attribution.** `tracegauge score` prints, under the cost note, the subagent share of the session's
+  spend and one line per subagent type (type, files, tokens, dollars, share), and `score --json` gains a fixed-key
+  `subagents` object. `tracegauge cost` (and `cost --json`) adds the subagent share of the period's spend and
+  tokens and a per-type table. The type is the `agentType` Claude Code writes in `agent-<id>.meta.json` next to each
+  subagent transcript (`unknown` when the file is missing or unreadable). A type with unpriced usage shows
+  `unpriced` or a `>=` lower bound, never `$0.00`. Per-type token counts in the text are real tokens, the unit of
+  the line above them; the JSON also carries billed tokens. New store column `subagent_by_type_json`. Fields:
+  [docs/JSON_OUTPUT.md](docs/JSON_OUTPUT.md). On the maintainer's local transcripts (unpublished local measurement; 60 main transcripts,
+  56 with a price, 32 with subagents) subagents were 53.8% of API-equivalent spend. That is a ratio of sums (subagent spend over total spend), so
+  the interval is a percentile bootstrap that resamples sessions (2,000 draws, seed 42): 41.7 to 64.3%. It does not
+  resample projects, so sessions of one project being alike is not reflected and the true uncertainty is wider.
+- **How often a session has a finding worth acting on**: [docs/ACTIONABLE_FINDINGS.md](docs/ACTIONABLE_FINDINGS.md)
+  (the maintainer's unpublished local measurement: 32 of 47 sessions with priced usage, Wilson 53.8 to 79.6%; 18.7% of 1,051 public
+  SWE-chat sessions, developer-cluster bootstrap 13.9 to 27.6%) and a check of the churn cause by three
+  three language models. Three models of different families (Claude, gpt-oss-120b, qwen3:8b), given only derived numbers and never the detector's label, agreed with its cause label on 158 of 160 sampled events (Fleiss kappa 0.865); this is LLM-consensus agreement with a rule that uses the same facts, not ground truth.
+- **Controlled cache runs** documented in [docs/CACHE_CHURN.md](docs/CACHE_CHURN.md): plan mode on and off and a
+  hook output added then changed did not collapse the cache read inside the lifetime; the thinking toggle did not
+  change the request, so it is reported as untested; the first resume of a `-p` session reads about 70% of the
+  prefix (3 of 3 runs). No new cause rule: nothing reproduced in 2 of 2 runs and was identifiable from the
+  transcript, so those events stay `UNEXPLAINED`.
+- **Contributor on-ramp**: issue forms (feature request, adapter request) and a pull request template, a
+  quickstart in CONTRIBUTING.md, [ROADMAP.md](ROADMAP.md), and [docs/ADAPTERS.md](docs/ADAPTERS.md), the adapter contract
+  with per-agent format notes (VERIFIED/UNVERIFIED tags kept, sources pinned).
+- **Dashboard screenshots on synthetic data** in `docs/screenshots/`, with the generator
+  `scripts/gen_dashboard_demo.py` and the commands that produced them.
+- README: a pinned subagent example block generated by `scripts/gen_readme_demo.py` and tested.
+
+### Fixed
+
+- The dashboard's coverage banner said "Self-baseline active on all 5 task types" whatever the store held and
+  showed a session count from the maintainer's own earlier corpus to every user; it now counts the task types that
+  are actually on your own baseline and shows no number your own sessions did not produce.
+- Three CodeQL alerts (URL host comparison in two tests and a one-off script, one assertion on text); a fourth
+  was dismissed with a written justification (a log line prints a count and a pattern name, never the secret).
+- `tests/test_public_text.py` scans tracked files only, so ignored local data cannot fail it on one machine.
+
+### Known gaps
+
+- **Sessions are dated by when they were scored** on the dashboard's trends page, not by the transcript's own
+  timestamps, so scoring old sessions in one go shows them all on one date.
+- **The thinking setting was not tested** in the controlled cache runs (the toggle used did not change the request).
+- The live alarm still ends its chain of thresholds at the one-developer table when you have no usable recent sessions of a type; it first tries your own recent sessions.
+- The `tes` names are still removed in 0.18.
 
 ## [0.16.0] - 2026-10-17 — renamed to tracegauge (import package, command, environment variables), relicensed Apache-2.0, cache-churn detector
 

@@ -8,7 +8,7 @@ to the correct reference and that domain_of_validity + baseline_source always de
 baseline was used.
 
 Cases:
-  1. Self-baseline active ('self') → scores against user's lean p25/p75, not B2
+  1. Self-baseline active ('self') → scores against the user's own percentile and p25/p75, not B2
   2. Self-baseline building       → token axis UNAVAILABLE, DOV says "Building"
   3. No self-baseline provided    → falls through to B2, baseline_source='b2_corpus'
   4. Session OOS by self-derived floor → out_of_scope / unavailable even when in B2 scope
