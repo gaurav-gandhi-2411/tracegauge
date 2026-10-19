@@ -8,7 +8,7 @@ These replace the PR-evidence screenshots removed in the 0.16.0 history scrub. B
 cannot be recreated (the old builds are gone), so each image is the current build in one state.
 
 - Captured on: 2026-10-18
-- master commit: `112729815854d7dc55edd119ee7596da7a7e57bd` (PR #155, banner wording; includes the #154 turn-count fix; pyproject version 0.16.0, unreleased 0.17.0 work)
+- master commit: `112729815854d7dc55edd119ee7596da7a7e57bd` (banner wording; includes the turn-count fix; pyproject version 0.16.0, unreleased 0.17.0 work)
 - Browser: Chrome headless, 1280 px wide, light theme (the dashboard has no dark theme)
 
 ## How they were produced
