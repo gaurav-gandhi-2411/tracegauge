@@ -12,7 +12,7 @@ extrapolated to the window's end, and ALWAYS labeled with its N (sessions,
 days observed) and the non-forecast caveat. Never "you will spend $X" — the
 message is always framed as "trending toward," never a promise.
 
-**source_mtime, not scored_at (issue #12)**: filters on the session FILE's
+**source_mtime, not scored_at (a since-fixed issue)**: filters on the session FILE's
 own last-write time on disk -- when the real usage happened -- not on
 `scored_at` (when `tracegauge score`/`tracegauge scan` happened to run). These coincide
 under an immediate-scoring workflow but diverge under batch-scoring: every

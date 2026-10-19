@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-"""tests/test_export_contribution_output_path.py — Issue #17: export-contribution's
+"""tests/test_export_contribution_output_path.py — a since-fixed issue: export-contribution's
 default --output path is derived from the RESOLVED db_path, not a fixed ~/.tes/.
 
 Same class of bug (and same class of fix) as RR2's intelligence_cache.json fix:

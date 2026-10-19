@@ -172,7 +172,7 @@ By project:
 ──────────────────────────────────────────────────────────────────────
 ```
 
-**Filters on `source_mtime`, not `scored_at`** — the session file's own real last-write time (when the usage actually happened), not when `tracegauge score`/`tracegauge scan` happened to run. Under a batch-scoring workflow (scoring a week's worth of sessions in one sitting), these diverge: a `scored_at`-based filter would cluster a week of real spend onto one scoring-run instant, or drop it outside the requested window, silently misattributing spend across period boundaries. `source_mtime` reflects when the money was actually spent, regardless of when you got around to running the scorer. (`tracegauge budget` had the same divergence and was fixed to filter on `source_mtime` as well in 0.12.1, [#12](https://github.com/gaurav-gandhi-2411/tracegauge/issues/12).)
+**Filters on `source_mtime`, not `scored_at`** — the session file's own real last-write time (when the usage actually happened), not when `tracegauge score`/`tracegauge scan` happened to run. Under a batch-scoring workflow (scoring a week's worth of sessions in one sitting), these diverge: a `scored_at`-based filter would cluster a week of real spend onto one scoring-run instant, or drop it outside the requested window, silently misattributing spend across period boundaries. `source_mtime` reflects when the money was actually spent, regardless of when you got around to running the scorer. (`tracegauge budget` had the same divergence and was fixed to filter on `source_mtime` as well in 0.12.1.)
 
 Sessions with no cost data yet are counted separately, not silently treated as `$0`. Real output of this version, with one of two synthetic sessions stored without a cost:
 
@@ -328,7 +328,7 @@ At the default 7-day window, with no cost data that recent, `tracegauge budget` 
 No sessions with current cost data in the last 7 days — nothing to project yet.
 ```
 
-**Filters on `source_mtime`, not `scored_at`** (since 0.12.1, [#12](https://github.com/gaurav-gandhi-2411/tracegauge/issues/12)) — when the session file was last written, the same as `tracegauge cost`. Before 0.12.1 it filtered on `scored_at` (when `tracegauge score`/`tracegauge scan` happened to run), so under a batch-scoring workflow it could cluster a batch of older spend onto one recent instant, or miss it once it aged out of the window.
+**Filters on `source_mtime`, not `scored_at`** (since 0.12.1) — when the session file was last written, the same as `tracegauge cost`. Before 0.12.1 it filtered on `scored_at` (when `tracegauge score`/`tracegauge scan` happened to run), so under a batch-scoring workflow it could cluster a batch of older spend onto one recent instant, or miss it once it aged out of the window.
 
 ## `tracegauge monitor` — live in-progress check
 

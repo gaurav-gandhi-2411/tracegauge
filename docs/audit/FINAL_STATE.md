@@ -11,9 +11,9 @@ executor's own output. Nothing here is stated from memory.
 
 ### 1.1 Pre-flight sync
 
-- `token-efficiency-scorer` PR #34 (`chore/release-0.12.2`) merged to `master` @
+- `token-efficiency-scorer` release PR (`chore/release-0.12.2`) merged to `master` @
   `58d3f940878e63b020bfd76647f9ef5fc42206a9`. Local checkout fast-forwarded from `4b8b0cd`.
-- `adk-tracegauge` PR #28 (`chore/release-0.5.1`) merged to `main` @
+- `adk-tracegauge` release PR (`chore/release-0.5.1`) merged to `main` @
   `e06af2e487dfec1395fd6535f8a9bc5247e847da`. Local checkout fast-forwarded from `f76df6f`.
 - Both repos confirmed clean (`git status --porcelain` empty) and `HEAD` matching the SHAs
   above at end of session.
@@ -62,7 +62,7 @@ confirmed present in the "Known limitations" section of the published page.
 
 ### 1.3 / 1.4 — tracegauge 0.12.2
 
-This release exists specifically to fix a real packaging gap surfaced by PR #31: `web/static/
+This release exists specifically to fix a real packaging gap surfaced by an earlier PR: `web/static/
 brand/*.svg` and `web/static/fonts/*.woff2` were never declared in `[tool.setuptools.
 package-data]`. A prior version installed from a real wheel (not the editable checkout used
 to build the feature) would 404 on the dashboard's favicon and fall back to system fonts.
@@ -231,9 +231,9 @@ repo as of this session's end.
 adk-tracegauge: none open.
 
 token-efficiency-scorer:
-- [#35](https://github.com/gaurav-gandhi-2411/token-efficiency-scorer/issues/35) — `CorpusNotConfigured` exception exported but never raised (dead code).
-- [#36](https://github.com/gaurav-gandhi-2411/token-efficiency-scorer/issues/36) — `backfill_turn_counts()` has zero callers (dead code, self-documented, confirmed still true).
-- [#37](https://github.com/gaurav-gandhi-2411/token-efficiency-scorer/issues/37) — two dead `sqlite3` imports in near-identical `cli.py` try blocks.
+- `CorpusNotConfigured` exception exported but never raised (dead code).
+- `backfill_turn_counts()` has zero callers (dead code, self-documented, confirmed still true).
+- two dead `sqlite3` imports in near-identical `cli.py` try blocks.
 
 **New minor finding this session (not yet filed as an issue):** `tes/cli.py`'s `serve`
 startup banner (~line 505) prints the literal string `~/.tes/tes.db` for the "Database:"

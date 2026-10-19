@@ -319,7 +319,7 @@ maintainer's" are unpublished local measurements on the maintainer's own transcr
 - **The package imports on Python 3.10 again.** 0.12.3, 0.12.4 and 0.13.0 fail on 3.10 with
   `ImportError: cannot import name 'UTC' from 'datetime'` (also the `tes` console script) although
   `requires-python` is `>=3.10`; 0.12.2 and earlier import fine (checked on the published wheels, Python
-  3.10.20). Cause: ruff's `target-version` was `py311`, so the 2026-08-21 lint pass (#45) rewrote
+  3.10.20). Cause: ruff's `target-version` was `py311`, so the 2026-08-21 lint pass rewrote
   `timezone.utc` to `datetime.UTC` (3.11+); CI only ran 3.11. Seven modules now use
   `UTC = timezone.utc`, ruff targets `py310`, and a new `python-compat` CI job runs the suite on 3.10,
   3.12, 3.13 and 3.14. On 3.10 install 0.14.0 or later, or pin `tracegauge<=0.12.2`.
@@ -345,8 +345,8 @@ maintainer's" are unpublished local measurements on the maintainer's own transcr
 ### Removed
 - **`tes.corpus_client.CorpusNotConfigured`** and **`tes.store.backfill_turn_counts`**, both
   exported in their module's `__all__` but never actually raised or called anywhere in the
-  codebase (confirmed exhaustively — source, tests, scripts, docs — before removal; issues #35
-  and #36). `CorpusNotConfigured` was documented as "raised when no CorpusConfig is available,"
+  codebase (confirmed exhaustively — source, tests, scripts, docs — before removal; both had been
+  reported as dead-code issues). `CorpusNotConfigured` was documented as "raised when no CorpusConfig is available,"
   but `contribute()`/`withdraw()` always used a Result-object pattern
   (`ContributeResult`/`WithdrawResult` with a `.reason` string) for this and every other failure
   mode instead — the exception was vestigial, not a real code path. `backfill_turn_counts` was
@@ -447,7 +447,7 @@ maintainer's" are unpublished local measurements on the maintainer's own transcr
   (`0.11.0`) for the identical reason. New regression test: sessions with
   real usage spread across days but scored in one batch prove the
   projection now reflects when the usage happened, not when it was
-  scored. (#12)
+  scored.
 - **`export-contribution`'s default `--output` path was a fixed
   `~/.tes/contribution-{date}.jsonl` regardless of `--db-path`/
   `TES_DB_PATH`** — same bug class as the `intelligence_cache.json` fix
@@ -457,7 +457,7 @@ maintainer's" are unpublished local measurements on the maintainer's own transcr
   `~/.tes/` regardless of which database was actually in use. Default now
   derives from the resolved `db_path`'s own directory, matching
   `intelligence/cache.py`'s established pattern. `--output` still
-  overrides the default exactly as before. (#17)
+  overrides the default exactly as before.
 
 Both fixes are read/write-path corrections only — no schema change, no
 new columns, no migration needed.
@@ -657,7 +657,7 @@ default location.
   filter would cluster a week of real spend onto one scoring-run instant, or drop it outside
   the requested window, silently misattributing spend across period boundaries.
   `tes/budget.py`'s existing projection has this same divergence (found, not fixed here —
-  tracked as [#12](https://github.com/gaurav-gandhi-2411/token-efficiency-scorer/issues/12)).
+  tracked as a GitHub issue, fixed in 0.12.1).
 - Sessions with no cost data yet are counted separately (`sessions_missing_cost`) and
   reported, never silently treated as `$0` or dropped from the total without a trace.
 - **Known gap, not built:** no per-model breakdown. Would need a new schema column and
