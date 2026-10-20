@@ -28,7 +28,7 @@ still installs, with pip's yanked-release warning. Checked against the real inde
   wrong type. Such counts now count as 0, non-object and over-nested lines are skipped with a warning, and wrong-typed `message`, `usage`
   and `model` fields are treated as empty. Test: `tests/test_adapt_hostile_input.py`.
 - **How it was found:** 500 random public SWE-chat sessions through the published 0.17.0 CLI: 499 scored, the failure had a null
-  `cache_creation_input_tokens`. A seeded structural fuzz (1,600 mutations) went from 5 escaped exceptions to none.
+  `cache_creation_input_tokens`. A seeded structural fuzz went from 5 escaped exceptions (300 mutations, before the fix) to none (1,600 mutations, after).
 - **Docs:** `docs/INSTALL.md` core install size re-measured on 0.17.0: 11.3 MiB (10.1 MiB was measured on 0.15.0).
 
 ## [0.17.0] - 2026-10-19 — token verdicts from your own sessions only, a multi-developer context line, subagent spend by type, contributor on-ramp
@@ -97,7 +97,7 @@ same). Three behaviours change and are listed first.
   the interval is a percentile bootstrap that resamples sessions (2,000 draws, seed 42): 41.7 to 64.3%. It does not
   resample projects, so sessions of one project being alike is not reflected and the true uncertainty is wider.
   *Note added 2026-10-21 (the figure above is unchanged): re-measured on 2026-10-20 with the same method on the transcripts that
-  were still on disk after Claude Code aged out older ones (38 priced sessions, 20 with subagents), the share is 51.3%
+  were still on disk most likely because Claude Code removed older ones (38 priced sessions, 20 with subagents), the share is 51.3%
   (31.2 to 65.8%). The earlier 60-transcript population can no longer be reconstructed.*
 - **How often a session has a finding worth acting on**: [docs/ACTIONABLE_FINDINGS.md](docs/ACTIONABLE_FINDINGS.md)
   (the maintainer's unpublished local measurement: 32 of 47 sessions with priced usage, Wilson 53.8 to 79.6%; 18.7% of 1,051 public

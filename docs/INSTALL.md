@@ -64,7 +64,7 @@ dependencies, so only numpy, scikit-learn and scipy were downloaded cold. Moving
 extra removes about 226 MiB from the default install. The core install is a little over a quarter of a 40 MB budget.
 
 The core size row was re-measured on 2026-10-20 against the published `tracegauge==0.17.0` (`pip install` into a fresh
-CPython 3.11 venv on Windows 11, then `scripts/measure_install_size.py` with that venv's interpreter): 11,804,085 bytes,
+CPython 3.11 venv on Windows, then `scripts/measure_install_size.py` with that venv's interpreter): 11,804,085 bytes,
 788 files, 16 distributions. An independent re-run the same day got 11,807,205 bytes (dependencies float, so the
 exact figure moves by a few KB); the reason for the rise from 10.1 MiB was not isolated. The other cells of the table are still the 2026-10-11 measurements
 on 0.15.0 (the `[patterns]` column and all timings were not repeated).
