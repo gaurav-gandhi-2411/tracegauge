@@ -6,12 +6,12 @@ conventions.
 
 A note on version numbers: the published PyPI artifacts are `0.1.0`, `0.3.0`, `0.3.1`, `0.5.0`,
 `0.6.0`, `0.7.0`, `0.7.1`, `0.8.0`, `0.10.0`, `0.10.1`, `0.10.2`, `0.11.0`, `0.11.1`, `0.12.0`,
-`0.12.1`, `0.12.2`, `0.12.3`, `0.12.4`, `0.13.0`, `0.14.0`, `0.15.0`, `0.16.0`, and `0.17.0` (the current release; the earlier ones confirmed live against PyPI's own JSON API;
+`0.12.1`, `0.12.2`, `0.12.3`, `0.12.4`, `0.13.0`, `0.14.0`, `0.15.0`, `0.16.0`, `0.17.0`, and `0.17.1` (the current release; the earlier ones confirmed live against PyPI's own JSON API;
 this note previously stopped enumerating at `0.10.2` for four releases running — corrected here
 rather than left standing, per the same "nothing re-checks this note against reality" gap
 RELEASING.md's own incident section already names). Versions `0.2.0` and `0.4.0` were built and
 tagged internally but never published to PyPI. `0.9.0` is built, tested, and committed, but
-**deliberately not published** — see its entry for why (corpus stays dormant). `0.17.0` is the
+**deliberately not published** — see its entry for why (corpus stays dormant). `0.17.1` is the
 **current release**.
 
 `0.12.3`, `0.12.4` and `0.13.0` are **yanked** on PyPI (reason: "ImportError on Python 3.10 (datetime.UTC); fixed in
@@ -20,6 +20,16 @@ installs (`pip install tracegauge`, `tracegauge<0.14`) but not from an exact pin
 still installs, with pip's yanked-release warning. Checked against the real index on 2026-10-09.
 
 ## [Unreleased]
+
+## [0.17.1] - 2026-10-20 — a malformed or null usage field no longer aborts scoring a session
+
+- **Fixed:** `tracegauge score` exited 4 on a Claude Code transcript with `"cache_creation_input_tokens": null` (or another null, boolean or
+  non-numeric token count), and failed the whole file on a line that is valid JSON but not an object (`5`, `[1, 2]`) or on a `message` of the
+  wrong type. Such counts now count as 0, non-object and over-nested lines are skipped with a warning, and wrong-typed `message`, `usage`
+  and `model` fields are treated as empty. Test: `tests/test_adapt_hostile_input.py`.
+- **How it was found:** 500 random public SWE-chat sessions through the published 0.17.0 CLI: 499 scored, the failure had a null
+  `cache_creation_input_tokens`. A seeded structural fuzz went from 5 escaped exceptions (300 mutations, before the fix) to none (1,600 mutations, after).
+- **Docs:** `docs/INSTALL.md` core install size re-measured on 0.17.0: 10.4 MiB on CPython 3.13.5 (10.1 MiB on 0.15.0; the rise is tracegauge's own files).
 
 ## [0.17.0] - 2026-10-19 — token verdicts from your own sessions only, a multi-developer context line, subagent spend by type, contributor on-ramp
 
@@ -86,6 +96,9 @@ same). Three behaviours change and are listed first.
   56 with a price, 32 with subagents) subagents were 53.8% of API-equivalent spend. That is a ratio of sums (subagent spend over total spend), so
   the interval is a percentile bootstrap that resamples sessions (2,000 draws, seed 42): 41.7 to 64.3%. It does not
   resample projects, so sessions of one project being alike is not reflected and the true uncertainty is wider.
+  *Note added 2026-10-20 (the figure above is unchanged): re-measured on 2026-10-20 with the same method on the transcripts
+  still on disk (38 priced sessions, 20 with subagents; older transcripts were most likely removed by Claude Code's transcript
+  retention): 51.3% (31.2 to 65.8%). The earlier 60-transcript population can no longer be reconstructed.*
 - **How often a session has a finding worth acting on**: [docs/ACTIONABLE_FINDINGS.md](docs/ACTIONABLE_FINDINGS.md)
   (the maintainer's unpublished local measurement: 32 of 47 sessions with priced usage, Wilson 53.8 to 79.6%; 18.7% of 1,051 public
   SWE-chat sessions, developer-cluster bootstrap 13.9 to 27.6%) and a check of the churn cause by three
