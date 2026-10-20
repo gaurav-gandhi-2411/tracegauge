@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-16 (session date; PyPI upload timestamps below are UTC and read
 2026-08-15, since the release ran late on 2026-08-15 UTC).
-**Release commit:** `710928ce7781549bc20659e7ad08f4d71802602b` (merge commit of PR #6)
+**Release commit:** `710928ce7781549bc20659e7ad08f4d71802602b` (merge commit of the 0.10.2 release PR)
 **Tag:** `v0.10.2`
 **Executed by:** Claude Code session, zero paid API calls, zero subagent dispatch (per task
 constraint — every step below was run directly, not delegated).
@@ -28,7 +28,7 @@ stated from memory or estimation.
 
 ### 2.4b — Direct confirmation the merge commit contains `fb4dc11`'s content
 
-**VERIFIED.** `git log --oneline master | head -20` shows `710928c` (merge of PR #6) with
+**VERIFIED.** `git log --oneline master | head -20` shows `710928c` (merge of the release PR) with
 parents including `fb4dc11` (`docs(changelog): lead 0.10.2 with the breaking unknown-model
 change`) and `0a75eb9` (`fix(cost): stop silently mispricing unresolved/missing-model calls
 (0.10.2)`).
@@ -102,7 +102,7 @@ regression introduced by this merge, and not something this PR's diff touched.
 Releases present at that point: `0.1.0, 0.3.0, 0.3.1, 0.5.0, 0.6.0, 0.7.0, 0.7.1, 0.8.0,
 0.10.0, 0.10.1`.
 
-**Independent fresh re-verification of PR #6's merge state** (not trusting the task's
+**Independent fresh re-verification of the release PR's merge state** (not trusting the task's
 supplied context): `gh pr view 6 --repo gaurav-gandhi-2411/token-efficiency-scorer --json
 state,mergedAt,mergeCommit,statusCheckRollup,baseRefName` returned:
 
@@ -232,7 +232,7 @@ claude-opus-4-5, claude-opus-4-6, claude-opus-4-7, claude-opus-4-8, claude-opus-
 claude-sonnet-4-5, claude-sonnet-4-6, claude-sonnet-5). Set TES_PRICE_TABLE to a JSON file
 with the same schema as tes/data/prices.json containing an entry for this model, add one to
 ~/.tes/prices.json, or open an issue at
-https://github.com/gaurav-gandhi-2411/token-efficiency-scorer/issues if it should ship
+https://github.com/gaurav-gandhi-2411/tracegauge/issues if it should ship
 built-in. This turn is excluded from the session's total_usd.
 >>> PASS: unknown model returns priced=False, total_usd=0.0, no guessed rate
 ```

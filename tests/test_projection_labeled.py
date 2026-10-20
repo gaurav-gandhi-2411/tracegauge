@@ -29,7 +29,7 @@ def _insert_session(
     scored_at_dt: datetime | None = None,
 ) -> None:
     """Insert a minimal-but-valid session row. ``source_mtime_dt`` is what
-    ``compute_budget_projection`` now filters/orders on (issue #12);
+    ``compute_budget_projection`` now filters/orders on (a since-fixed issue);
     ``scored_at_dt`` defaults to the same instant but can be set
     independently to simulate a batch-scoring workflow, where every session
     in one ``tracegauge scan`` run shares the same ``scored_at`` regardless of when
@@ -125,7 +125,7 @@ def test_projection_never_states_false_certainty(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Issue #12: filters by source_mtime, not scored_at (batch-scoring workflow)
+# A since-fixed issue: filters by source_mtime, not scored_at (batch-scoring workflow)
 # ---------------------------------------------------------------------------
 
 

@@ -26,7 +26,7 @@ across period boundaries. `source_mtime` reflects when the money was
 actually spent, independent of when the user got around to running the
 scorer.
 
-**Historical note, now resolved (issue #12):** `tracegauge/budget.py`'s rolling-
+**Historical note, now resolved:** `tracegauge/budget.py`'s rolling-
 window projection used to filter on `scored_at`, not `source_mtime`, for
 exactly the reason this module avoids it -- flagged here when this module
 was written (scoped to the new `tracegauge cost` command only, not fixed
