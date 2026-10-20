@@ -88,7 +88,7 @@ Subagent spend, on a third synthetic session (six subagent transcripts of three 
 
 The three type rows add to $1.88 while the subagent total is $1.89, because each figure is rounded independently and the total uses the unrounded values.
 
-How often does a session have something like this? On one developer's 47 sessions with priced usage, 68% (32) have a finding of at least $0.50, nearly all of it cache churn; on 1,051 public SWE-chat sessions it is 19% (cluster-bootstrap interval 14 to 28%). The first figure is one person on one machine, the second is clustered by developer, and "finding" does not mean "avoidable". Both are the maintainer's unpublished local measurements; method and caveats are in [docs/ACTIONABLE_FINDINGS.md](https://github.com/gaurav-gandhi-2411/tracegauge/blob/master/docs/ACTIONABLE_FINDINGS.md).
+How often does a session have something like this? On one developer's 47 sessions with priced usage, 68% (32) have a finding of at least $0.50, nearly all of it cache churn; on a random sample of 2,451 public SWE-chat sessions it is 34% (cluster-bootstrap interval 31 to 37%; it was 19% on an earlier, cheaper subset of 1,051 sessions). The first figure is one person on one machine, the second is clustered by developer, and "finding" does not mean "avoidable". Both are the maintainer's unpublished local measurements; method and caveats are in [docs/ACTIONABLE_FINDINGS.md](https://github.com/gaurav-gandhi-2411/tracegauge/blob/master/docs/ACTIONABLE_FINDINGS.md).
 
 ## Commands
 
