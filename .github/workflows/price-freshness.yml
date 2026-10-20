@@ -83,3 +83,5 @@ jobs:
       - name: Cross-check against LiteLLM (advisory, non-fatal)
         continue-on-error: true
         run: uv run python scripts/check_prices_vs_litellm.py --strict
+
+# Re-saved when the repository was recreated (2026-10): GitHub registers a workflow only when a push changes its file.
