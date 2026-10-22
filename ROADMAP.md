@@ -51,6 +51,38 @@ that describes the shape of its files (never their content) is the most useful t
 
 Alongside the adapters: the `tes` names are removed in 0.18, as announced in the 0.16.0 entry.
 
+## Measured, not shipped: two detector candidates
+
+Two candidate detectors were built and measured for 0.18 against thresholds written down before any
+measurement. Neither met its bar, so neither ships. The numbers are kept here so the work is not lost;
+they are the maintainer's unpublished local measurements. The public sample is a random 2,500 (seed 42)
+of the Claude Code sessions in [SALT-NLP/SWE-chat](https://huggingface.co/datasets/SALT-NLP/SWE-chat),
+2,448 of them priced, 1,063 developer clusters. Contains information from SALT-NLP/SWE-chat, which is
+made available under the [ODC Attribution License 1.0](https://opendatacommons.org/licenses/by/1-0/).
+
+- **Context bloat:** a tool call after which the next request carried at least 10,000 new tokens, re-sent
+  by every later request. 34.0% of the public sample had at least $0.50 of it (developer-cluster
+  bootstrap 95% interval 31.2 to 37.0%), $2,671.86 of $46,335.57 API-equivalent spend (5.8%). That
+  passed the prevalence bar (20%). The precision bar did not pass. Three judges from different model
+  families (Claude Sonnet 5.5, gpt-oss-120b, Qwen3.8-27B), each admitted at 90% or better on calibration
+  cards, read 60 findings with the tool call and its output. They answered whether a size-limited form
+  of the call (head, grep, a ranged read, a summary) would plausibly have kept the needed information.
+  A majority said yes for 17 of 60 (28.3%, session-cluster bootstrap 17.2 to 39.4%; bar 85%), and the
+  judges agreed little with each other (Fleiss kappa 0.18; bar 0.6). Most large reads were judged to
+  be needed. The token count is also loose: it is everything new in the next request, and in 15 of the
+  60 findings it was more than five times the size of the tool output itself.
+- **Model mix:** short turns on a top-tier model, priced as if they had run on Sonnet 5.5. This is a
+  price difference only, with no quality claim, and an upper bound, because it assumes the cheaper
+  model would find its cache warm. 49.1% of the public sample had at least $0.50 of it (46.1 to
+  51.9%), $6,156.59 in total. Precision could not be measured: on calibration cards asking whether a
+  mid-tier model could perform a turn's action, two of the three judges scored 50% and 80% (bar 90%),
+  and no other model family was available to replace them. On one developer's sessions, 7 of 38
+  (18.4%) had at least $0.50 of it.
+
+Either could come back with a new design measured against the same bars: for context bloat, a token
+count tied to the single tool result; for model mix, a way of judging that tells routine turns from
+hard ones.
+
 ## Open questions from the 0.17.0 measurements
 
 Two things the 0.17.0 numbers raised and did not settle. Neither changes what 0.17.0 does.
