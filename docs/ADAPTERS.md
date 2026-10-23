@@ -252,15 +252,21 @@ Settled from source at `2f761ae` (and now VERIFIED):
   `:1526`, `:2396-2400`, `:2463-2466`), where `T` is `TokenUsage` (`protocol.rs:2361-2376`). `info`
   may be `null`; the adapter skips such an event.
 - `input_tokens` INCLUDES `cached_input_tokens` (invariant 6): non-cached input is
-  `input_tokens - cached_input_tokens` (`protocol.rs:2550-2552`). It also includes
-  `cache_write_input_tokens`: the Responses-API parser reads both out of `input_tokens_details`
-  (`codex-rs/codex-api/src/sse/responses.rs:130-134`), and its test has input 100 = cached 40 +
-  written 60 with total 110 = input + output (`responses.rs:846-867`). Fresh input is therefore
-  `input - cached - write`.
+  `input_tokens - cached_input_tokens` (`protocol.rs:2550-2552`).
+- INFERRED, not verified: `input_tokens` also includes `cache_write_input_tokens`. The only evidence is
+  that the Responses-API parser reads both out of `input_tokens_details`
+  (`codex-rs/codex-api/src/sse/responses.rs:130-134`) and a serde parse test uses input 100, cached 40,
+  written 60, total 110 (`responses.rs:846-867`); those are numbers chosen for the test, and
+  `non_cached_input` subtracts only the cached part. The adapter subtracts the write as well. If the
+  write is actually additive, fresh input is understated by the written tokens and cost is understated
+  with it. Confirm against a real file.
+- A malformed record with `input_tokens` below cached + write gets a billed input of cached + write
+  (fresh 0), so the turn is internally consistent and no cached token is dropped. Huge counts are not
+  capped.
 - `output_tokens` already includes `reasoning_output_tokens`: the same test has output 10, reasoning 5,
   total 110, and the CLI prints reasoning as a parenthesised part of output (`protocol.rs:2622-2631`).
   The adapter does not add it again.
-- The model id is `turn_context.model`, a required string (`protocol.rs:3415`, `:3438`); the adapter
+- The model id is `turn_context.model`, a required string (`protocol.rs:3416`, `:3438`); the adapter
   uses the latest one seen before a `token_count`.
 - `*.jsonl.zst` is refused with `CodexCompressedSessionError` (no zstd dependency).
 
@@ -273,8 +279,12 @@ Still UNVERIFIED or not done:
   usage is not recognised or removed.
 - Cache writes carry no lifetime, so `cache_creation_tier_known` is 0. The bundled price table also has
   no OpenAI models, so every real Codex session prices as unpriced until entries are added.
-- A session with no `token_count` gets `usage_available: false` and a caveat, but `tracegauge.cost` does
-  not read that flag yet and would show $0 for it; consumers must check the flag.
+- A session with no `token_count` gets `usage_available: false`, a caveat and `models_seen`, and its ai
+  turns have `model` blanked to `""`. `tracegauge.cost` cannot resolve an empty model, so it reports the
+  session as approximate ("empty model string") instead of a confident $0; cost.py itself is unchanged.
+- Cumulative totals are treated as monotone (`append_last_usage`, `protocol.rs:2431`): any event whose
+  total is at or below the maximum seen is ignored, which also covers an A, B, A replay. A decreasing
+  total is counted in `usage_dedupe.decreasing_total_events` and warned about.
 - `edit_operations` (apply_patch) are not extracted, `Paginated` history (`ItemCompleted`) is not read,
   cache-churn and subagent roll-up do not exist for Codex, and the injected-context prefixes skipped for
   the task description are UNVERIFIED.

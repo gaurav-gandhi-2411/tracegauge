@@ -82,6 +82,7 @@ def test_duplicate_cumulative_events_counted_once() -> None:
         "usage_records": 4,
         "usage_records_deduped": 2,
         "duplicate_usage_records": 2,
+        "decreasing_total_events": 0,
     }
     assert _cost(record).total_usd == pytest.approx(1605 / 1e6)
 
@@ -121,6 +122,61 @@ def test_session_without_token_count_is_marked_unknown_not_zero(
     # Turn structure survives, with tool names; the zero-usage ai turns say nothing about money.
     assert [t["role"] for t in record["digest"]["turns"]] == ["user", "ai", "tool", "ai"]
     assert record["digest"]["turns"][1]["tool_names"] == ["shell"]
+
+
+def test_no_token_count_session_is_approximate_never_confident_zero() -> None:
+    record = adapt_codex_session(FIXTURES / "no_token_count.jsonl")
+    assert record["models_seen"] == ["gpt-synth-a"]  # the real id survives outside the turns
+    assert {t["model"] for t in _ai(record)} == {""}
+    # With a price entry for the model, and with the bundled table: never a confident $0.
+    for prices in (_prices(), load_price_table()):
+        cost = compute_session_cost(reconstruct_digest(record["digest"]), prices)
+        assert cost.approximate is True
+        assert any("empty model string" in r for r in cost.approximate_reasons)
+
+
+def _token_count_line(total: int, last_input: int, **extra: int) -> str:
+    last = {"input_tokens": last_input, "output_tokens": 0, "total_tokens": last_input, **extra}
+    info = {"total_token_usage": {"total_tokens": total}, "last_token_usage": last}
+    return json.dumps({"type": "event_msg", "payload": {"type": "token_count", "info": info}})
+
+
+def test_replayed_cumulative_total_not_only_adjacent_is_ignored(tmp_path: Path) -> None:
+    """A, B, A: the third event re-reports A's cumulative total and must not be counted."""
+    p = tmp_path / "aba.jsonl"
+    rows = [
+        _token_count_line(1000, 1000),
+        _token_count_line(1260, 260),
+        _token_count_line(1000, 1000),
+    ]
+    p.write_text("\n".join(rows) + "\n", encoding="utf-8")
+    record = adapt_codex_session(p)
+    assert record["total_tokens"] == 1000 + 260 == 1260  # not 2260 / 2310
+    assert record["usage_dedupe"]["usage_records_deduped"] == 2
+
+
+def test_decreasing_total_ignored_and_reported(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    p = tmp_path / "down.jsonl"
+    rows = [_token_count_line(1000, 1000), _token_count_line(400, 400)]
+    p.write_text("\n".join(rows) + "\n", encoding="utf-8")
+    record = adapt_codex_session(p)
+    assert record["total_tokens"] == 1000
+    assert record["usage_dedupe"]["decreasing_total_events"] == 1
+    assert "went down" in capsys.readouterr().err
+
+
+def test_input_below_cached_part_is_made_consistent(tmp_path: Path) -> None:
+    """Malformed input < cached + write: billed input becomes cached + write (conservative)."""
+    p = tmp_path / "clamp.jsonl"
+    p.write_text(
+        _token_count_line(5, -100, cached_input_tokens=600, cache_write_input_tokens=50) + "\n",
+        encoding="utf-8",
+    )
+    turn = _ai(adapt_codex_session(p))[0]
+    assert turn["token_count_input"] == 650
+    assert turn["cache_read"] + turn["cache_creation"] <= turn["token_count_input"]
 
 
 def test_zst_file_raises_documented_error(tmp_path: Path) -> None:

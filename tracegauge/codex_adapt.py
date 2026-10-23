@@ -82,6 +82,10 @@ def _split_usage(usage: dict[str, Any]) -> tuple[int, int, int, int]:
     where input 100 = cached 40 + write 60 and total 110 = input + output). So fresh input is
     ``input - cached - write``, clamped at 0 for a malformed record, and the digest's
     ``token_count_input`` (fresh + read + write) equals ``input_tokens`` for a well-formed one.
+    If a malformed record has ``input_tokens`` below ``cached + write`` the turn is made consistent
+    the conservative way: the digest's input becomes ``cached + write`` (``fresh`` is 0), so
+    cache_read and cache_creation never exceed ``token_count_input`` and no cached token is
+    dropped from the bill. Huge values are not capped.
     ``output_tokens`` already includes reasoning tokens (``reasoning_output_tokens`` is a subset,
     shown as "output=X (reasoning Y)" at protocol.rs:2622-2631), so it is never added again.
     """
@@ -165,7 +169,11 @@ def adapt_codex_session(path: Path) -> dict[str, Any]:
     pending_text: list[str] = []
     pending_tools: list[str] = []
 
-    prev_total: tuple[int, ...] | None = None  # cumulative figures of the last counted event
+    # Cumulative total_tokens only grows in the source (append_last_usage, protocol.rs:2431), so
+    # any event whose total is <= the maximum seen is a replay (A, B, A included) and is ignored.
+    max_total: int | None = None
+    decreasing_total_events = 0  # ignored events whose total went DOWN (not just repeated)
+    models_seen: list[str] = []
     usage_records = 0  # token_count events that carried usage
     usage_records_deduped = 0  # distinct cumulative totals among them
     sum_input = sum_read = sum_write = sum_output = 0
@@ -221,6 +229,8 @@ def adapt_codex_session(path: Path) -> dict[str, Any]:
         elif kind == "turn_context":
             if isinstance(payload.get("model"), str):
                 model = payload["model"]
+                if model not in models_seen:
+                    models_seen.append(model)
         elif kind == "response_item":
             ptype = payload.get("type")
             if ptype == "message":
@@ -253,14 +263,13 @@ def adapt_codex_session(path: Path) -> dict[str, Any]:
             if not total or not last:
                 continue  # rate-limit-only event (info is null): no usage
             usage_records += 1
-            cumulative = (
-                _int_or_zero(total.get("total_tokens")),
-                _int_or_zero(total.get("input_tokens")),
-                _int_or_zero(total.get("output_tokens")),
-            )
-            if cumulative == prev_total:
-                continue  # same cumulative total re-emitted: already counted
-            prev_total = cumulative
+            cumulative = _int_or_zero(total.get("total_tokens"))
+            if max_total is not None and cumulative <= max_total:
+                if cumulative < max_total:
+                    decreasing_total_events += 1
+                    _warn(f"ignoring a token_count whose cumulative total went down in {path.name}")
+                continue  # replayed cumulative total: already counted
+            max_total = cumulative
             usage_records_deduped += 1
             usage = _split_usage(last)
             sum_input += usage[0]
@@ -275,9 +284,17 @@ def adapt_codex_session(path: Path) -> dict[str, Any]:
 
     caveats: list[str] = []
     if usage_records == 0:
-        # Fail closed on money: every ai turn is zero-token, so a cost computed from this record
-        # would read $0. Consumers must check ``usage_available`` before showing a price.
-        caveats.append("no token_count events: usage and cost unknown, not zero")
+        # Fail closed on money (invariant 8). Every ai turn here is zero-token, which the cost
+        # module would price as a confident $0 whenever the model is in the price table. So the
+        # model is blanked on the ai turns: tracegauge.cost cannot resolve "" and reports the
+        # session as approximate ("empty model string -- cost unknown"). The real ids are kept
+        # in ``models_seen`` and the caveat. ``usage_available`` says the same thing explicitly.
+        for t in turns:
+            t.model = ""
+        caveats.append(
+            "no token_count events: usage and cost unknown, not zero "
+            f"(models seen: {', '.join(models_seen) or 'none'}; model blanked on ai turns)"
+        )
         _warn(f"no token_count events in {path.name}; usage is unknown, not zero")
     if forked:
         # UNVERIFIED (third-party parser): a fork replays the parent's usage into the child file.
@@ -323,6 +340,7 @@ def adapt_codex_session(path: Path) -> dict[str, Any]:
             "usage_records": usage_records,
             "usage_records_deduped": usage_records_deduped,
             "duplicate_usage_records": usage_records - usage_records_deduped,
+            "decreasing_total_events": decreasing_total_events,
         },
         "subagent_usage": {
             "file_count": 0,
@@ -331,6 +349,7 @@ def adapt_codex_session(path: Path) -> dict[str, Any]:
             "billed_tokens": 0,
         },
         "usage_available": usage_records > 0,
+        "models_seen": models_seen,
         "usage_caveats": caveats,
     }
 
