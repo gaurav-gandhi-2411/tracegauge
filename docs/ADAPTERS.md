@@ -241,7 +241,7 @@ Status: groundwork on `feat/codex-adapter`
 Codex rollout. It is **not** wired into the CLI or discovery (routing needs an agreed design, see
 section (a)). It has only been run on hand-written synthetic files; no real transcript was read.
 
-Settled from source at `2f761ae` (and now VERIFIED):
+Settled from source at `2f761ae` (VERIFIED unless a bullet says INFERRED):
 - A rollout line is `{"timestamp": str, "ordinal"?: int, "type": <snake_case variant>, "payload": {...}}`:
   the envelope is `RolloutLine` (`codex-rs/history/src/lib.rs:365-371`, `item` flattened) and the
   `type`/`payload` pair is the adjacently-tagged `RolloutItemWire`
@@ -282,9 +282,13 @@ Still UNVERIFIED or not done:
 - A session with no `token_count` gets `usage_available: false`, a caveat and `models_seen`, and its ai
   turns have `model` blanked to `""`. `tracegauge.cost` cannot resolve an empty model, so it reports the
   session as approximate ("empty model string") instead of a confident $0; cost.py itself is unchanged.
-- Cumulative totals are treated as monotone (`append_last_usage`, `protocol.rs:2431`): any event whose
-  total is at or below the maximum seen is ignored, which also covers an A, B, A replay. A decreasing
-  total is counted in `usage_dedupe.decreasing_total_events` and warned about.
+- Dedupe: within one counter the cumulative total only grows (`append_last_usage`, `protocol.rs:2431`),
+  so an event whose total equals that of the last counted event is ignored. A total BELOW it is treated
+  as a counter reset (restart, compaction): the event's `last_token_usage` is counted, the baseline moves
+  down, `usage_dedupe.decreasing_total_events` is incremented, a warning is printed and a caveat says
+  usage may be over-counted if the drop was a replay (so an A, B, A replay is over-counted, flagged).
+  Ignoring it instead would silently drop all later usage. If `total_tokens` is missing or not a number,
+  the event is compared on (total, input, output) with the previous event only, with a warning.
 - `edit_operations` (apply_patch) are not extracted, `Paginated` history (`ItemCompleted`) is not read,
   cache-churn and subagent roll-up do not exist for Codex, and the injected-context prefixes skipped for
   the task description are UNVERIFIED.

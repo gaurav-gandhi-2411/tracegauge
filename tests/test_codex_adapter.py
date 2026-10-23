@@ -141,8 +141,12 @@ def _token_count_line(total: int, last_input: int, **extra: int) -> str:
     return json.dumps({"type": "event_msg", "payload": {"type": "token_count", "info": info}})
 
 
-def test_replayed_cumulative_total_not_only_adjacent_is_ignored(tmp_path: Path) -> None:
-    """A, B, A: the third event re-reports A's cumulative total and must not be counted."""
+def test_aba_replay_is_counted_as_a_reset_and_caveated(tmp_path: Path) -> None:
+    """A, B, A: ASSUMPTION: a drop is a counter reset, so a real replay is over-counted but flagged.
+
+    Silently ignoring a drop would lose all later usage after a real reset (see the next tests),
+    which is the worse error for money.
+    """
     p = tmp_path / "aba.jsonl"
     rows = [
         _token_count_line(1000, 1000),
@@ -151,20 +155,57 @@ def test_replayed_cumulative_total_not_only_adjacent_is_ignored(tmp_path: Path) 
     ]
     p.write_text("\n".join(rows) + "\n", encoding="utf-8")
     record = adapt_codex_session(p)
-    assert record["total_tokens"] == 1000 + 260 == 1260  # not 2260 / 2310
-    assert record["usage_dedupe"]["usage_records_deduped"] == 2
+    assert record["total_tokens"] == 1000 + 260 + 1000 == 2260
+    assert record["usage_dedupe"]["usage_records_deduped"] == 3
+    assert record["usage_dedupe"]["decreasing_total_events"] == 1
+    assert any("over-counted" in c for c in record["usage_caveats"])
 
 
-def test_decreasing_total_ignored_and_reported(
+def test_reset_after_compaction_keeps_later_usage(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    p = tmp_path / "down.jsonl"
-    rows = [_token_count_line(1000, 1000), _token_count_line(400, 400)]
+    """Totals 100010, 320, 740: the drop is a reset; both later calls are counted."""
+    p = tmp_path / "reset.jsonl"
+    rows = [
+        _token_count_line(100010, 100010),
+        _token_count_line(320, 320),
+        _token_count_line(740, 420),
+        _token_count_line(740, 420),  # repeat of the new baseline: ignored
+    ]
     p.write_text("\n".join(rows) + "\n", encoding="utf-8")
     record = adapt_codex_session(p)
-    assert record["total_tokens"] == 1000
+    assert record["total_tokens"] == 100010 + 320 + 420 == 100750
     assert record["usage_dedupe"]["decreasing_total_events"] == 1
     assert "went down" in capsys.readouterr().err
+    assert any("over-counted" in c for c in record["usage_caveats"])
+
+
+def test_huge_corrupt_first_total_does_not_swallow_real_events(tmp_path: Path) -> None:
+    p = tmp_path / "huge.jsonl"
+    rows = [_token_count_line(10**12, 500), _token_count_line(300, 300)]
+    p.write_text("\n".join(rows) + "\n", encoding="utf-8")
+    record = adapt_codex_session(p)
+    assert record["total_tokens"] == 500 + 300
+    assert record["usage_caveats"]  # the drop is flagged, not silent
+
+
+def test_events_without_total_tokens_are_not_collapsed(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """No numeric total_tokens: fall back to (total, input, output) vs the previous event."""
+
+    def line(inp: int, out: int) -> str:
+        info = {
+            "total_token_usage": {"input_tokens": inp, "output_tokens": out},
+            "last_token_usage": {"input_tokens": inp, "output_tokens": out},
+        }
+        return json.dumps({"type": "event_msg", "payload": {"type": "token_count", "info": info}})
+
+    p = tmp_path / "nototal.jsonl"
+    p.write_text("\n".join([line(100, 5), line(100, 5), line(250, 7)]) + "\n", encoding="utf-8")
+    record = adapt_codex_session(p)
+    assert record["total_tokens"] == (100 + 5) + (250 + 7) == 362  # the exact repeat is dropped
+    assert "numeric total_tokens" in capsys.readouterr().err
 
 
 def test_input_below_cached_part_is_made_consistent(tmp_path: Path) -> None:

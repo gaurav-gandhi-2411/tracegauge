@@ -169,10 +169,14 @@ def adapt_codex_session(path: Path) -> dict[str, Any]:
     pending_text: list[str] = []
     pending_tools: list[str] = []
 
-    # Cumulative total_tokens only grows in the source (append_last_usage, protocol.rs:2431), so
-    # any event whose total is <= the maximum seen is a replay (A, B, A included) and is ignored.
-    max_total: int | None = None
-    decreasing_total_events = 0  # ignored events whose total went DOWN (not just repeated)
+    # Cumulative total_tokens only grows within one counter (append_last_usage,
+    # protocol.rs:2431). An event whose total equals the baseline (the total of the last counted
+    # event) is a repeat and is ignored. A total BELOW the baseline is treated as a counter reset
+    # (restart, compaction) and counted, with the baseline moved down: dropping it would silently
+    # lose every later call, while a replay miscounted as a reset is over-counted but caveated.
+    baseline: int | None = None
+    prev_key: tuple[int, int, int] | None = None  # fallback key when total_tokens is unusable
+    decreasing_total_events = 0  # events counted as a reset because the total went DOWN
     models_seen: list[str] = []
     usage_records = 0  # token_count events that carried usage
     usage_records_deduped = 0  # distinct cumulative totals among them
@@ -263,13 +267,27 @@ def adapt_codex_session(path: Path) -> dict[str, Any]:
             if not total or not last:
                 continue  # rate-limit-only event (info is null): no usage
             usage_records += 1
-            cumulative = _int_or_zero(total.get("total_tokens"))
-            if max_total is not None and cumulative <= max_total:
-                if cumulative < max_total:
+            raw_total = total.get("total_tokens")
+            if isinstance(raw_total, int) and not isinstance(raw_total, bool):
+                prev_key = None
+                if baseline is not None and raw_total == baseline:
+                    continue  # repeated cumulative total: already counted
+                if baseline is not None and raw_total < baseline:
                     decreasing_total_events += 1
-                    _warn(f"ignoring a token_count whose cumulative total went down in {path.name}")
-                continue  # replayed cumulative total: already counted
-            max_total = cumulative
+                    _warn(f"cumulative total went down in {path.name}; counted as a counter reset")
+                baseline = raw_total
+            else:
+                # No usable total: compare (total, input, output) with the previous event only.
+                _warn(f"token_count without a numeric total_tokens in {path.name}")
+                key = (
+                    _int_or_zero(raw_total),
+                    _int_or_zero(total.get("input_tokens")),
+                    _int_or_zero(total.get("output_tokens")),
+                )
+                baseline = None
+                if key == prev_key:
+                    continue
+                prev_key = key
             usage_records_deduped += 1
             usage = _split_usage(last)
             sum_input += usage[0]
@@ -296,6 +314,11 @@ def adapt_codex_session(path: Path) -> dict[str, Any]:
             f"(models seen: {', '.join(models_seen) or 'none'}; model blanked on ai turns)"
         )
         _warn(f"no token_count events in {path.name}; usage is unknown, not zero")
+    if decreasing_total_events:
+        caveats.append(
+            "cumulative total went down and was counted as a counter reset; usage may be "
+            "over-counted if it was a replay rather than a reset"
+        )
     if forked:
         # UNVERIFIED (third-party parser): a fork replays the parent's usage into the child file.
         caveats.append("forked session: replayed parent usage may be double counted")
