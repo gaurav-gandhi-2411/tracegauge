@@ -219,8 +219,8 @@ Token usage
   `thread_token_usage` (`protocol.rs:~2379-2392`, persisted at `policy.rs:44`).
 - VERIFIED: the model id is in `turn_context.model` (`protocol.rs:3415+`), not in `token_count`; attribute
   usage to a model by tracking the latest `turn_context`.
-- Not established by the notes: whether `input_tokens` already includes `cached_input_tokens`. Settle it
-  with a real file before mapping to the digest (invariant 6).
+- Settled from source in the status subsection below: `input_tokens` includes `cached_input_tokens`
+  (invariant 6). Still worth confirming against a real file.
 
 Pitfalls
 - Both a cumulative total and a per-call value exist: use one consistently and never add them.
@@ -234,6 +234,50 @@ Pitfalls
 - `Paginated` history changes which event types exist (VERIFIED above).
 - `.jsonl.zst` files can exist when compression is enabled (VERIFIED above), so a reader that must see
   compressed files has to handle them.
+
+Status: groundwork on `feat/codex-adapter`
+
+`tracegauge/codex_adapt.py` has `adapt_codex_session(path)`, which returns the layer-1 record for a
+Codex rollout. It is **not** wired into the CLI or discovery (routing needs an agreed design, see
+section (a)). It has only been run on hand-written synthetic files; no real transcript was read.
+
+Settled from source at `2f761ae` (and now VERIFIED):
+- A rollout line is `{"timestamp": str, "ordinal"?: int, "type": <snake_case variant>, "payload": {...}}`:
+  the envelope is `RolloutLine` (`codex-rs/history/src/lib.rs:365-371`, `item` flattened) and the
+  `type`/`payload` pair is the adjacently-tagged `RolloutItemWire`
+  (`codex-rs/history/src/rollout_payload.rs:32-76`).
+- A usage event is a line with `type: "event_msg"` and `payload`
+  `{"type": "token_count", "info": {"total_token_usage": T, "last_token_usage": T,
+  "model_context_window": int|null} | null, "rate_limits": {...}|null}` (`protocol.rs:1459-1462`,
+  `:1526`, `:2396-2400`, `:2463-2466`), where `T` is `TokenUsage` (`protocol.rs:2361-2376`). `info`
+  may be `null`; the adapter skips such an event.
+- `input_tokens` INCLUDES `cached_input_tokens` (invariant 6): non-cached input is
+  `input_tokens - cached_input_tokens` (`protocol.rs:2550-2552`). It also includes
+  `cache_write_input_tokens`: the Responses-API parser reads both out of `input_tokens_details`
+  (`codex-rs/codex-api/src/sse/responses.rs:130-134`), and its test has input 100 = cached 40 +
+  written 60 with total 110 = input + output (`responses.rs:846-867`). Fresh input is therefore
+  `input - cached - write`.
+- `output_tokens` already includes `reasoning_output_tokens`: the same test has output 10, reasoning 5,
+  total 110, and the CLI prints reasoning as a parenthesised part of output (`protocol.rs:2622-2631`).
+  The adapter does not add it again.
+- The model id is `turn_context.model`, a required string (`protocol.rs:3415`, `:3438`); the adapter
+  uses the latest one seen before a `token_count`.
+- `*.jsonl.zst` is refused with `CodexCompressedSessionError` (no zstd dependency).
+
+Still UNVERIFIED or not done:
+- Whether a response's items are written before or after its `token_count`. The adapter attaches the
+  assistant text and tool names seen since the previous boundary to the next `token_count`.
+- `token_usage_record` items (per response, with `response_id`) are ignored so a response is not
+  counted twice next to its `token_count`; if a build writes only those, usage is read as missing.
+- Forked sessions: a `session_meta.forked_from_id` only adds a caveat and a warning; replayed parent
+  usage is not recognised or removed.
+- Cache writes carry no lifetime, so `cache_creation_tier_known` is 0. The bundled price table also has
+  no OpenAI models, so every real Codex session prices as unpriced until entries are added.
+- A session with no `token_count` gets `usage_available: false` and a caveat, but `tracegauge.cost` does
+  not read that flag yet and would show $0 for it; consumers must check the flag.
+- `edit_operations` (apply_patch) are not extracted, `Paginated` history (`ItemCompleted`) is not read,
+  cache-churn and subagent roll-up do not exist for Codex, and the injected-context prefixes skipped for
+  the task description are UNVERIFIED.
 
 ### Gemini CLI (`google-gemini/gemini-cli` @ `fa2531d`)
 
