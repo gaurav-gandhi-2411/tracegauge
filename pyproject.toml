@@ -1,7 +1,7 @@
 [build-system]
 # Exact pin: the wheel's bytes depend on the backend version (RELEASING.md). `wheel` is dropped:
 # setuptools >= 70.1 ships its own bdist_wheel.
-requires = ["setuptools==84.0.0"]
+requires = ["setuptools==84.2.1"]
 build-backend = "setuptools.build_meta"
 
 [project]
