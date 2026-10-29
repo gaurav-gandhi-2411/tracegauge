@@ -3,18 +3,18 @@
 
 from __future__ import annotations
 
-"""Environment variables: ``TRACEGAUGE_*`` is primary, the old ``TES_*`` names still work.
+"""Environment variables: only the ``TRACEGAUGE_*`` names are read.
 
 Every setting is read through :func:`env_value`, which returns the ``TRACEGAUGE_<NAME>`` value if it is
-set and non-empty, otherwise the ``TES_<NAME>`` value, otherwise ``None``. An empty string counts
-as unset in both places (the same rule the code used for ``TES_*`` before the rename), so an empty
-``TRACEGAUGE_DB_PATH`` falls through to ``TES_DB_PATH`` rather than masking it. When both are set to
-different values, ``TRACEGAUGE_*`` wins.
+set and non-empty, otherwise ``None``. The old ``TES_*`` names were deprecated in 0.16 and are no
+longer read as of 0.18 (docs/MIGRATING_FROM_TES.md).
 
-The ``TES_*`` names are removed in 0.18. The command line prints one stderr line when it sees one in
-use without its ``TRACEGAUGE_*`` replacement (:func:`deprecated_in_use`); the library functions
-never print. The line goes to stderr only, so ``--json`` output and pipes are unaffected, and
-``TRACEGAUGE_NO_DEPRECATION_NOTICE=1`` silences it (and the ``tes`` command's own notice).
+Removing them must not change behaviour silently: a script that isolates its store with
+``TES_DB_PATH=/tmp/x.db`` would otherwise start writing into the real ``~/.tes/tes.db``. So the
+command line refuses to run while a ``TES_*`` setting is set without its ``TRACEGAUGE_*`` twin
+(:func:`legacy_in_use`, :func:`legacy_refusal`), naming the variable to rename. When both spellings
+are set, ``TRACEGAUGE_*`` is the one in effect and nothing is refused (the setup has been migrated).
+The library functions never print and never refuse; they read ``TRACEGAUGE_*`` only.
 """
 
 import os
@@ -35,18 +35,15 @@ SETTINGS = (
     "TEST_USE_AMBIENT_STORE",
 )
 
-NO_DEPRECATION_NOTICE = "TRACEGAUGE_NO_DEPRECATION_NOTICE"
-_TRUTHY = ("1", "true", "yes")
-
 
 def env_value(name: str, environ: Mapping[str, str] | None = None) -> str | None:
-    """Value of setting ``name`` (without prefix): TRACEGAUGE_<name>, else TES_<name>, else None."""
+    """Value of setting ``name`` (without prefix): TRACEGAUGE_<name> if set and non-empty, else None."""
     env = os.environ if environ is None else environ
-    return env.get(PRIMARY_PREFIX + name) or env.get(LEGACY_PREFIX + name) or None
+    return env.get(PRIMARY_PREFIX + name) or None
 
 
-def deprecated_in_use(environ: Mapping[str, str] | None = None) -> list[str]:
-    """Names of ``TES_*`` variables that are set (non-empty) while their ``TRACEGAUGE_*`` twin is not."""
+def legacy_in_use(environ: Mapping[str, str] | None = None) -> list[str]:
+    """Removed ``TES_*`` variables set (non-empty) while their ``TRACEGAUGE_*`` twin is not."""
     env = os.environ if environ is None else environ
     return [
         LEGACY_PREFIX + name
@@ -55,20 +52,14 @@ def deprecated_in_use(environ: Mapping[str, str] | None = None) -> list[str]:
     ]
 
 
-def notice_suppressed(environ: Mapping[str, str] | None = None) -> bool:
-    """True when TRACEGAUGE_NO_DEPRECATION_NOTICE is 1, true or yes (case-insensitive)."""
-    env = os.environ if environ is None else environ
-    return env.get(NO_DEPRECATION_NOTICE, "").strip().lower() in _TRUTHY
-
-
-def deprecation_line(environ: Mapping[str, str] | None = None) -> str | None:
-    """The one-line stderr notice for deprecated variables in use, or None if there is nothing to say."""
-    used = deprecated_in_use(environ)
-    if not used or notice_suppressed(environ):
+def legacy_refusal(environ: Mapping[str, str] | None = None) -> str | None:
+    """The stderr error the command line prints (then exits 1) for removed variables, or None."""
+    used = legacy_in_use(environ)
+    if not used:
         return None
-    names = ", ".join(used)
+    renames = ", ".join(f"{u} -> {PRIMARY_PREFIX}{u[len(LEGACY_PREFIX) :]}" for u in used)
     return (
-        f"{names} {'is' if len(used) == 1 else 'are'} deprecated; use "
-        f"{', '.join(PRIMARY_PREFIX + u[len(LEGACY_PREFIX) :] for u in used)}. "
-        "The TES_ names will be removed in 0.18."
+        f"[ERROR] {', '.join(used)} {'is' if len(used) == 1 else 'are'} no longer read (the TES_ names "
+        f"were removed in 0.18). Rename: {renames}. tracegauge stops here rather than silently ignore "
+        "it (for example, use a different database). See docs/MIGRATING_FROM_TES.md."
     )

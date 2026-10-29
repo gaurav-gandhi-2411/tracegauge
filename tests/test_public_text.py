@@ -72,7 +72,7 @@ SOURCE_MARKERS = {
     ),
 }
 SOURCE_SUFFIXES = {".py", ".html", ".yml", ".yaml", ".toml", ".sh", ".in", ".md", ".json"}
-SOURCE_ROOTS = ("tracegauge", "tes", "scripts", ".github", "_build")
+SOURCE_ROOTS = ("tracegauge", "scripts", ".github", "_build")
 SOURCE_FILES = (
     "pyproject.toml",
     "MANIFEST.in",
@@ -285,7 +285,6 @@ def test_source_scan_covers_the_shipped_surfaces() -> None:
     rels = {p.relative_to(ROOT).as_posix() for p in _source_files()}
     assert "tracegauge/cli.py" in rels
     assert "tracegauge/web/templates/base.html" in rels
-    assert "tes/__init__.py" in rels
     assert "pyproject.toml" in rels
     assert ".github/workflows/ci.yml" in rels
     assert any(r.startswith("scripts/") for r in rels)
