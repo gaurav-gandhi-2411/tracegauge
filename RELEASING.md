@@ -107,9 +107,10 @@ This document describes the actual flow, written after running it for real for `
    commands/flags, via PyPI's JSON API — not just that CI succeeded.
 7. **Never delete a published version**, including a superseded one. Deletion burns the
    version number permanently and breaks every pinned install of it. If a release has a real
-   problem, ship a new version that supersedes it — that's what versioning is for. Yank only a
-   version that cannot be installed or imported for a class of users, or has a security problem
-   (0.12.3 to 0.13.0 were yanked for that reason); the procedure is in
+   problem, ship a new version that supersedes it — that's what versioning is for. Yank
+   ([PEP 592](https://peps.python.org/pep-0592/)) only a version that harms a class of users: it
+   cannot be installed or imported for them, or it has a security problem (0.12.3 to 0.13.0 were
+   yanked for that reason). A yank is reversible; the procedure is in
    [docs/HOTFIX.md](docs/HOTFIX.md).
 
 ## Pre-release price check (local, needs real transcripts)

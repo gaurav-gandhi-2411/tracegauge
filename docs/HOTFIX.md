@@ -81,8 +81,9 @@ workflow and needs the maintainer's review.
 
 ## Yanking a release
 
-A yank hides a version from every install that does not name it exactly: `pip install tracegauge` and
-version ranges skip it, `pip install tracegauge==X.Y.Z` still works and prints a warning. It is reversible.
+A yank ([PEP 592](https://peps.python.org/pep-0592/)) hides a version from every install that does not name
+it exactly: `pip install tracegauge` and version ranges skip it, `pip install tracegauge==X.Y.Z` still works
+and prints a warning. It is reversible.
 
 Yank only when the version cannot be installed or imported for a class of users, or it has a security
 problem. Do **not** yank for a wrong number or a cosmetic bug, and do not yank a version because a newer one
