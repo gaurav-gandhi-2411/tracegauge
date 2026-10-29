@@ -239,7 +239,39 @@ Status: groundwork on `feat/codex-adapter`
 
 `tracegauge/codex_adapt.py` has `adapt_codex_session(path)`, which returns the layer-1 record for a
 Codex rollout. It is **not** wired into the CLI or discovery (routing needs an agreed design, see
-section (a)). It has only been run on hand-written synthetic files; no real transcript was read.
+section (a)). It has been run on hand-written synthetic files and on four real rollouts (next list).
+
+Checked against real rollouts (2026-10-29). Codex CLI 0.165.0 and 0.162.1 (`@openai/codex` from npm),
+`codex exec` on a synthetic task with a local model (`qwen3:8b` via Ollama), in a throwaway environment.
+Scenarios: one turn; one turn plus two `codex exec resume --last` follow-ups; one turn with `--ephemeral`.
+Two of the files, shortened, are test fixtures (`tests/fixtures/codex/real_*.jsonl`). OBSERVED below means
+seen in those files.
+- OBSERVED: every line is `{timestamp, ordinal, type, payload}`, and `ordinal` was present on every line.
+  `session_meta` carries `cli_version`, `model_provider`, `cwd`, `originator` (`codex_exec`), `source`,
+  `history_mode` and `id`. `forked_from_id` was absent; none of these sessions was forked.
+- OBSERVED: `codex exec` wrote `history_mode: "paginated"` in both versions. Under it, `response_item`
+  messages, reasoning, `function_call` and `function_call_output` items are still in the rollout, and so
+  are `token_count` events. The legacy `user_message` / `agent_message` events are absent;
+  `item_completed`, `thread_settings_applied` and `world_state` lines appear instead. The adapter reads
+  only the `response_item` and `token_count` lines, so it handles these files.
+- OBSERVED: order within one model call is call, then call output, then `token_usage_record`, then
+  `token_count`. A final assistant message comes before its `token_count`. Adapter version 2 charges a
+  `token_count` that follows a call output to the ai turn holding that call. Version 1 charged it to a new,
+  empty ai turn (e.g. 11 ai turns for 7 calls). Session totals are the same in both versions.
+- OBSERVED: every `token_count` total grew by exactly its `last_token_usage`: no repeated or falling totals
+  in 27 events. `total_tokens == input_tokens + output_tokens`, so cached input is inside `input_tokens`
+  (invariant 6). Each `token_usage_record.usage` equals the `last_token_usage` of the next `token_count`,
+  and they sum to the final cumulative total. Ignoring `token_usage_record` is therefore what avoids
+  double counting.
+- OBSERVED: on all four files, the adapter's input, cache-read, output and total equal Codex's final
+  `total_token_usage`.
+- OBSERVED: `resume --last` appends to the same rollout file, with a new `turn_context` per turn.
+  `--ephemeral` wrote no rollout in either version.
+- OBSERVED: `<environment_context>` is injected as a user message before the task, and the adapter skips
+  it. Instructions (`<skills_instructions>`, `<permissions instructions>`) arrive as `developer` messages,
+  which the adapter does not read as user turns.
+- Not covered by these files: cache writes and reasoning tokens (both 0 with Ollama), an OpenAI-hosted
+  model, forks, compaction, `AGENTS.md` / `<user_instructions>`, and Legacy-mode files.
 
 Settled from source at `2f761ae` (VERIFIED unless a bullet says INFERRED):
 - A rollout line is `{"timestamp": str, "ordinal"?: int, "type": <snake_case variant>, "payload": {...}}`:
@@ -271,10 +303,9 @@ Settled from source at `2f761ae` (VERIFIED unless a bullet says INFERRED):
 - `*.jsonl.zst` is refused with `CodexCompressedSessionError` (no zstd dependency).
 
 Still UNVERIFIED or not done:
-- Whether a response's items are written before or after its `token_count`. The adapter attaches the
-  assistant text and tool names seen since the previous boundary to the next `token_count`.
-- `token_usage_record` items (per response, with `response_id`) are ignored so a response is not
-  counted twice next to its `token_count`; if a build writes only those, usage is read as missing.
+- Item order is settled for 0.162.1 and 0.165.0 (above), but not for other builds or for Legacy mode.
+- `token_usage_record` items (per response, with `response_id`) are ignored, so a response is not
+  counted twice next to its `token_count`. If a build writes only those, usage is read as missing.
 - Forked sessions: a `session_meta.forked_from_id` only adds a caveat and a warning; replayed parent
   usage is not recognised or removed.
 - Cache writes carry no lifetime, so `cache_creation_tier_known` is 0. The bundled price table also has
@@ -289,9 +320,14 @@ Still UNVERIFIED or not done:
   usage may be over-counted if the drop was a replay (so an A, B, A replay is over-counted, flagged).
   Ignoring it instead would silently drop all later usage. If `total_tokens` is missing or not a number,
   the event is compared on (total, input, output) with the previous event only, with a warning.
-- `edit_operations` (apply_patch) are not extracted, `Paginated` history (`ItemCompleted`) is not read,
-  cache-churn and subagent roll-up do not exist for Codex, and the injected-context prefixes skipped for
-  the task description are UNVERIFIED.
+- Not done:
+  - `edit_operations` (apply_patch) are not extracted.
+  - `item_completed` lines are not read. In the files above they hold typed items (`UserMessage`,
+    `AgentMessage`, `Reasoning`, `CommandExecution`) for the same turns. UNVERIFIED: whether they ever
+    hold something the `response_item` lines do not.
+  - Cache-churn and subagent roll-up do not exist for Codex.
+- Of the injected-context prefixes, `<environment_context>` is OBSERVED; `<user_instructions>` and
+  `# AGENTS.md` are still UNVERIFIED.
 
 ### Gemini CLI (`google-gemini/gemini-cli` @ `fa2531d`)
 
