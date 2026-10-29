@@ -105,9 +105,13 @@ This document describes the actual flow, written after running it for real for `
 6. **Post-publish verify from a fresh environment against the real index** — see below.
    Also confirm (step 2's checklist) that the published README actually rendered the new
    commands/flags, via PyPI's JSON API — not just that CI succeeded.
-7. **Do not yank or delete a published version**, ever, including a superseded one. Deletion
-   burns the version number permanently and breaks every pinned install of it. If a release
-   has a real problem, ship a new version that supersedes it — that's what versioning is for.
+7. **Never delete a published version**, including a superseded one. Deletion burns the
+   version number permanently and breaks every pinned install of it. If a release has a real
+   problem, ship a new version that supersedes it — that's what versioning is for. Yank
+   ([PEP 592](https://peps.python.org/pep-0592/)) only a version that harms a class of users: it
+   cannot be installed or imported for them, or it has a security problem (0.12.3 to 0.13.0 were
+   yanked for that reason). A yank is reversible; the procedure is in
+   [docs/HOTFIX.md](docs/HOTFIX.md).
 
 ## Pre-release price check (local, needs real transcripts)
 
@@ -133,7 +137,7 @@ turns and reported as a floor for aggregated subagent usage.
 published version comes entirely from `[project].version`, not from the git tag name.
 **The tag is a trigger, not a version source.** If you push `vX.Y.Z` while
 `pyproject.toml` still says the previous version, `release.yml` builds and publishes the
-*previous* version under the *new* tag — a real, permanent mismatch, since "do not yank"
+*previous* version under the *new* tag — a real, permanent mismatch, since "never delete"
 above means it can't be un-published. Always confirm the version landed on `master` and merged
 *before* tagging:
 
