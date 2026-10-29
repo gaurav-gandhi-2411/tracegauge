@@ -366,3 +366,46 @@ def test_real_resume_appends_to_one_rollout() -> None:
     assert len(users) == 3  # the first task plus two `resume --last` follow-ups
     # <environment_context> is injected as a user message before the task and is skipped.
     assert record["digest"]["task_description"].startswith("create hello.py that prints")
+
+
+def test_call_without_its_token_count_does_not_take_the_next_one(tmp_path: Path) -> None:
+    # call A -> output, (A's token_count missing), call B -> output -> token_count: the usage is B's.
+    def call(name: str, cid: str) -> list[str]:
+        return [
+            json.dumps(
+                {"type": "response_item", "payload": {"type": "function_call", "name": name}}
+            ),
+            json.dumps(
+                {
+                    "type": "response_item",
+                    "payload": {"type": "function_call_output", "call_id": cid, "output": "ok"},
+                }
+            ),
+        ]
+
+    usage = {
+        "input_tokens": 100,
+        "cached_input_tokens": 0,
+        "output_tokens": 10,
+        "total_tokens": 110,
+    }
+    token_count = {
+        "type": "event_msg",
+        "payload": {
+            "type": "token_count",
+            "info": {"total_token_usage": usage, "last_token_usage": usage},
+        },
+    }
+    rows = [
+        json.dumps({"type": "turn_context", "payload": {"model": "gpt-synth-a"}}),
+        *call("first", "a"),
+        *call("second", "b"),
+        json.dumps(token_count),
+    ]
+    p = tmp_path / "missing_token_count.jsonl"
+    p.write_text("\n".join(rows) + "\n", encoding="utf-8")
+    ai = _ai(adapt_codex_session(p))
+    assert [(t["tool_names"], t["token_count_input"]) for t in ai] == [
+        (["first"], 0),
+        (["second"], 100),
+    ]

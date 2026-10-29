@@ -217,8 +217,9 @@ def adapt_codex_session(path: Path) -> dict[str, Any]:
         """Emit assistant content that no token_count claimed as a zero-usage ai turn."""
         if pending_text or pending_tools:
             add_turn("ai", "".join(pending_text), list(pending_tools), (0, 0, 0, 0))
-            if not unclaimed:
-                unclaimed.append(len(turns) - 1)
+            # The latest flushed call: if an earlier call never got its token_count, the next
+            # one still belongs to the call just before it.
+            unclaimed[:] = [len(turns) - 1]
             pending_text.clear()
             pending_tools.clear()
 
