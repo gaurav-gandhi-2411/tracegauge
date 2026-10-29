@@ -6,7 +6,9 @@ from __future__ import annotations
 """Codex CLI adapter (groundwork, not wired into the CLI).
 
 Fixtures under tests/fixtures/codex/ are hand-written and synthetic, in the record shapes of
-openai/codex @ 2f761ae (see docs/ADAPTERS.md). Expected totals are derived by hand in each test.
+openai/codex @ 2f761ae (see docs/ADAPTERS.md), except real_*.jsonl (real Codex rollouts of a
+synthetic task, described above their tests). Expected totals of the hand-written ones are derived
+by hand in each test; the real ones are checked against Codex's own cumulative totals.
 """
 
 import copy
@@ -302,3 +304,65 @@ def test_hostile_input_never_raises(tmp_path: Path) -> None:
     assert len(record["digest"]["task_description"]) <= 800
     assert record["total_tokens"] >= 0
     assert all(t["token_count_input"] >= 0 for t in _ai(record))
+
+
+# --- Real rollouts ---------------------------------------------------------------------------
+# real_0165_single.jsonl and real_01621_multi_resume.jsonl were written by Codex CLI 0.165.0 and
+# 0.162.1 (`codex exec`, then `codex exec resume --last` twice for the multi file) on a synthetic
+# task with a local model (qwen3:8b via Ollama) on 2026-10-29. Long strings are truncated and
+# paths normalised; every line, key and usage number is as Codex wrote it.
+REAL = ("real_0165_single.jsonl", "real_01621_multi_resume.jsonl")
+
+
+def _rows(name: str) -> list[dict[str, Any]]:
+    text = (FIXTURES / name).read_text(encoding="utf-8")
+    return [json.loads(ln) for ln in text.splitlines() if ln.strip()]
+
+
+def _token_counts(name: str) -> list[dict[str, Any]]:
+    return [
+        r["payload"]["info"]
+        for r in _rows(name)
+        if r["type"] == "event_msg"
+        and r["payload"].get("type") == "token_count"
+        and r["payload"].get("info")
+    ]
+
+
+@pytest.mark.parametrize("name", REAL)
+def test_real_rollout_totals_equal_codex_cumulative_total(name: str) -> None:
+    record = adapt_codex_session(FIXTURES / name)
+    final = _token_counts(name)[-1]["total_token_usage"]
+    turns = record["digest"]["turns"]
+    assert sum(t["token_count_input"] for t in turns) == final["input_tokens"]
+    assert sum(t["cache_read"] for t in turns) == final["cached_input_tokens"]
+    assert sum(t["token_count_output"] for t in turns) == final["output_tokens"]
+    assert record["total_tokens"] == final["total_tokens"]
+    # token_usage_record lines repeat each call's usage; they must not be counted a second time.
+    assert sum(r["type"] == "token_usage_record" for r in _rows(name)) == len(_token_counts(name))
+    assert record["usage_dedupe"]["usage_records"] == len(_token_counts(name))
+    assert record["usage_caveats"] == [] and record["models_seen"] == ["qwen3:8b"]
+
+
+@pytest.mark.parametrize("name", REAL)
+def test_real_rollout_usage_lands_on_the_call_that_made_it(name: str) -> None:
+    # Codex writes call -> call output -> token_count, so each token_count belongs to the ai turn
+    # that holds the call: one ai turn per model call, and every ai turn carries usage.
+    ai = _ai(adapt_codex_session(FIXTURES / name))
+    assert len(ai) == len(_token_counts(name))
+    assert all(t["token_count_input"] > 0 for t in ai)
+    calls = sum(
+        r["type"] == "response_item" and r["payload"].get("type") == "function_call"
+        for r in _rows(name)
+    )
+    assert sum(len(t["tool_names"]) for t in ai) == calls
+
+
+def test_real_resume_appends_to_one_rollout() -> None:
+    rows = _rows("real_01621_multi_resume.jsonl")
+    assert rows[0]["payload"]["history_mode"] == "paginated"  # what `codex exec` requests
+    record = adapt_codex_session(FIXTURES / "real_01621_multi_resume.jsonl")
+    users = [t for t in record["digest"]["turns"] if t["role"] == "user"]
+    assert len(users) == 3  # the first task plus two `resume --last` follow-ups
+    # <environment_context> is injected as a user message before the task and is skipped.
+    assert record["digest"]["task_description"].startswith("create hello.py that prints")

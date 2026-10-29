@@ -12,8 +12,9 @@ from __future__ import annotations
 It is deliberately NOT called from the CLI, ``tracegauge.discovery`` or any other module: how a
 path is routed to an adapter needs an agreed design first (docs/ADAPTERS.md, section (a)). The
 format notes it is built on (openai/codex @ 2f761ae, with file:line) are in docs/ADAPTERS.md,
-"Codex CLI". It was written from that source and from hand-made synthetic files only; no real
-Codex transcript has been read, so everything marked UNVERIFIED there is still unchecked.
+"Codex CLI". It was written from that source and hand-made synthetic files, then checked against
+real 0.162.1 / 0.165.0 rollouts (synthetic tasks, local model); what those files settled and what
+is still UNVERIFIED is listed there.
 
 Public API:
     adapt_codex_session(path: Path) -> dict
@@ -39,11 +40,14 @@ from tracegauge.adapt import (
 # tracegauge.adapt.ADAPTER_VERSION: the two adapters evolve separately.
 #   1 = per-call ``last_token_usage`` from each ``token_count`` event whose cumulative total
 #       changed; ``input_tokens`` split into fresh / cached / cache-write (see _split_usage)
-CODEX_ADAPTER_VERSION: int = 1
+#   2 = a token_count that follows a tool output is charged to the ai turn that made the call
+#       (real 0.162.1 / 0.165.0 order), not to a new empty turn; session totals unchanged
+CODEX_ADAPTER_VERSION: int = 2
 
-# User messages Codex injects before the real task (UNVERIFIED: tag names are from memory of
-# the format, not read in the pinned source). They are skipped for task_description only while
-# no real user message has been seen, like the system-reminder skip in tracegauge.adapt.
+# User messages Codex injects before the real task. <environment_context> is seen in real
+# 0.162.1 / 0.165.0 rollouts; the other two are UNVERIFIED (from memory of the format). They are
+# skipped for task_description only while no real user message has been seen, like the
+# system-reminder skip in tracegauge.adapt.
 _INJECTED_CONTEXT_PREFIXES: tuple[str, ...] = (
     "<environment_context>",
     "<user_instructions>",
@@ -168,6 +172,10 @@ def adapt_codex_session(path: Path) -> dict[str, Any]:
     # Assistant content seen since the last model-call boundary; attached to the next ai turn.
     pending_text: list[str] = []
     pending_tools: list[str] = []
+    # Index of the ai turn that a tool output flushed before its token_count arrived. Real
+    # rollouts (0.162.1, 0.165.0) write call -> call output -> token_count, so that call's usage
+    # belongs on this turn, not on a new empty one.
+    unclaimed: list[int] = []
 
     # Cumulative total_tokens only grows within one counter (append_last_usage,
     # protocol.rs:2431). An event whose total equals the baseline (the total of the last counted
@@ -209,6 +217,8 @@ def adapt_codex_session(path: Path) -> dict[str, Any]:
         """Emit assistant content that no token_count claimed as a zero-usage ai turn."""
         if pending_text or pending_tools:
             add_turn("ai", "".join(pending_text), list(pending_tools), (0, 0, 0, 0))
+            if not unclaimed:
+                unclaimed.append(len(turns) - 1)
             pending_text.clear()
             pending_tools.clear()
 
@@ -247,6 +257,7 @@ def adapt_codex_session(path: Path) -> dict[str, Any]:
                     if not task_description_set and stripped.startswith(_INJECTED_CONTEXT_PREFIXES):
                         continue
                     flush_pending()
+                    unclaimed.clear()  # a user message starts a new model call
                     if not task_description_set:
                         task_description = _redact_secrets(stripped[:_TASK_DESC_MAX_CHARS])
                         task_description_set = True
@@ -294,7 +305,14 @@ def adapt_codex_session(path: Path) -> dict[str, Any]:
             sum_read += usage[1]
             sum_write += usage[2]
             sum_output += usage[3]
-            add_turn("ai", "".join(pending_text), list(pending_tools), usage)
+            if not (pending_text or pending_tools) and unclaimed:
+                fresh, read, write, out = usage
+                t = turns[unclaimed[0]]
+                t.token_count_input, t.token_count_output = fresh + read + write, out
+                t.cache_read, t.cache_creation = read, write
+            else:
+                add_turn("ai", "".join(pending_text), list(pending_tools), usage)
+            unclaimed.clear()
             pending_text.clear()
             pending_tools.clear()
 
