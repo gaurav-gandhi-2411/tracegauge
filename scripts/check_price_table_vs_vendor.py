@@ -343,9 +343,11 @@ def parse_vendor_modifiers(md: str) -> VendorModifiers:
     Raises FetchError (never returns defaults) when a section is missing, a number is
     unreadable or the page states the web-search price inconsistently.
     """
+    # "(?:USD\s+)?": the live page began writing "$10 USD per 1,000 searches" (seen 2026-10-26,
+    # the same change as the fast-mode cells' "$8 USD / MTok"); "1,?000" also takes "1000".
     prices_found = {
         m.group(1).replace(",", "")
-        for m in re.finditer(r"\$\s*([\d,]+(?:\.\d+)?)\s+per\s+1,000\s+searches", md)
+        for m in re.finditer(r"\$\s*([\d,]+(?:\.\d+)?)\s+(?:USD\s+)?per\s+1,?000\s+searches", md)
     }
     if len(prices_found) != 1:
         raise FetchError(f"web search price not found exactly once: {sorted(prices_found)}")

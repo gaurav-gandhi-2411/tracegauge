@@ -52,6 +52,26 @@ def test_a_usd_label_in_the_price_cells_still_parses() -> None:
     assert parse_vendor_modifiers(labelled) == parse_vendor_modifiers(_PAGE_TEXT)
 
 
+@pytest.mark.parametrize(
+    "wording",
+    [
+        "$10 USD per 1,000 searches",  # the live page from 2026-10-26 (scheduled run failed)
+        "$10.00 USD per 1,000 searches",
+        "$10 per 1000 searches",
+    ],
+)
+def test_a_usd_label_in_the_web_search_price_still_parses(wording: str) -> None:
+    labelled = _PAGE_TEXT.replace("$10 per 1,000 searches", wording)
+    assert labelled != _PAGE_TEXT
+    assert parse_vendor_modifiers(labelled).web_search_per_1000 == 10.0
+
+
+def test_a_usd_labelled_second_web_search_price_is_still_ambiguous() -> None:
+    md = _PAGE_TEXT + "\nAlso $12 USD per 1,000 searches elsewhere.\n"
+    with pytest.raises(FetchError, match="not found exactly once"):
+        parse_vendor_modifiers(md)
+
+
 def test_the_bundled_table_matches_the_page_modifiers() -> None:
     assert compare_modifiers(_table(), parse_vendor_modifiers(_PAGE_TEXT)) == ([], [])
 
