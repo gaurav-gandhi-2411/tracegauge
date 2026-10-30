@@ -109,7 +109,7 @@ How often does a session have something like this? On one developer's 47 session
 
 ## Supported agents
 
-Claude Code is supported. Other agents are planned; none is supported today. Each needs its own transcript adapter and a fresh validation run, not a flag. The order planned is in the [roadmap](https://github.com/gaurav-gandhi-2411/tracegauge/blob/master/ROADMAP.md), and [docs/ADAPTERS.md](https://github.com/gaurav-gandhi-2411/tracegauge/blob/master/docs/ADAPTERS.md) is the contract an adapter has to meet.
+Claude Code is supported. 0.18.0 adds an experimental, library-only reader for Codex CLI session files (`tracegauge.codex_adapt.adapt_codex_session`). The `tracegauge` commands do not read Codex sessions yet, and the bundled price table has no OpenAI models, so a Codex session's cost shows as unpriced. The reader was checked against four real rollouts from a local model only; cache writes, reasoning tokens and OpenAI-hosted models are unverified ([docs/ADAPTERS.md](https://github.com/gaurav-gandhi-2411/tracegauge/blob/master/docs/ADAPTERS.md)). Other agents are planned; none is supported today. Each needs its own transcript adapter and a fresh validation run, not a flag. The order planned is in the [roadmap](https://github.com/gaurav-gandhi-2411/tracegauge/blob/master/ROADMAP.md), and [docs/ADAPTERS.md](https://github.com/gaurav-gandhi-2411/tracegauge/blob/master/docs/ADAPTERS.md) is the contract an adapter has to meet.
 
 ## Methodology
 

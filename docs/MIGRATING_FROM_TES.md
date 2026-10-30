@@ -125,7 +125,7 @@ notice hint, and the `corpus`, `ask` and judge hints, which now name `tracegauge
 
 | Where | Before | Now |
 |---|---|---|
-| `--version` | `tes <version>` | `tracegauge <version>` (the program name is fixed, so the `tgauge` and `tes` commands print it too) |
+| `--version` | `tes <version>` | `tracegauge <version>` (the program name is fixed, so `tgauge` prints it too, as `tes` did in 0.16 and 0.17) |
 | JSON field `cost_domain_of_validity` (prose) | "... override with TES_PRICE_TABLE env var or ~/.tes/prices.json ..." | "... override with TRACEGAUGE_PRICE_TABLE env var or ~/.tes/prices.json ..." (the field name and its position are unchanged; only the sentence differs) |
 | Text report banner | `TOKEN-EFFICIENCY SCORER` | `TRACEGAUGE` |
 

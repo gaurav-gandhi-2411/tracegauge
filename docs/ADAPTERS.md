@@ -1,6 +1,7 @@
 # Writing an adapter for another coding agent
 
-Only Claude Code is supported today. An adapter reads one agent's session files and produces the
+The commands support Claude Code only. 0.18.0 adds an experimental, library-only reader for Codex CLI
+rollouts (`tracegauge.codex_adapt.adapt_codex_session`, section (c)); the commands do not use it yet. An adapter reads one agent's session files and produces the
 digest that the rest of tracegauge scores. This page says what an adapter has to produce, how the Claude
 Code adapter does it, what is known about six other agents, how to test an adapter without a real
 transcript, and what a pull request for one should contain. The plan and its order are in
@@ -9,8 +10,9 @@ transcript, and what a pull request for one should contain. The plan and its ord
 ## How much of this to trust
 
 The notes on other agents were read from each agent's public source and a few web pages on **2026-10-10**.
-**No agent was run, and no transcript from any of them was read.** Every claim about another agent
-carries one of two tags:
+**No agent was run, and no transcript from any of them was read,** with one later exception: four real
+Codex CLI rollouts were read on 2026-10-29, and what they showed is tagged OBSERVED in the Codex status
+subsection. Every other claim about another agent carries one of two tags:
 
 - **VERIFIED**: read in that agent's own source at the commit pinned below, with the file and line given.
 - **UNVERIFIED**: everything else. That includes claims taken from a third-party parser or a web page,
@@ -163,8 +165,8 @@ Tests to read first: `tests/test_usage_dedupe.py`, `tests/test_subagent_rollup.p
 
 ## (c) Other agents
 
-None of the following is implemented. The first three are the planned order (Codex, OpenCode, Aider); the
-other three have been read but are not scheduled.
+Only Codex CLI has an implementation, and it is library-only (its status subsection says what was checked). The
+first three are the planned order (Codex, OpenCode, Aider); the other three have been read but are not scheduled.
 
 | Agent | Store | Where token usage lives |
 |---|---|---|
@@ -237,11 +239,19 @@ Pitfalls
 - `.jsonl.zst` files can exist when compression is enabled (VERIFIED above), so a reader that must see
   compressed files has to handle them.
 
-Status: groundwork on `feat/codex-adapter`
+Status: experimental library adapter, shipped in 0.18.0
 
 `tracegauge/codex_adapt.py` has `adapt_codex_session(path)`, which returns the layer-1 record for a
 Codex rollout. It is **not** wired into the CLI or discovery (routing needs an agreed design, see
 section (a)). It has been run on hand-written synthetic files and on four real rollouts (next list).
+
+UNVERIFIED, because checking them needs a paid OpenAI-hosted model and every real file so far came from a
+local model:
+- cache-write tokens (`cache_write_input_tokens`), including whether `input_tokens` contains them (the
+  adapter assumes it does; see "Settled from source" below);
+- reasoning tokens (`reasoning_output_tokens`), including whether `output_tokens` contains them;
+- any session from an OpenAI-hosted model: its model ids, its usage fields and its prices (the bundled
+  price table has no OpenAI models, so every real Codex session is reported as unpriced).
 
 Checked against real rollouts (2026-10-29). Codex CLI 0.165.0 and 0.162.1 (`@openai/codex` from npm),
 `codex exec` on a synthetic task with a local model (`qwen3:8b` via Ollama), in a throwaway environment.

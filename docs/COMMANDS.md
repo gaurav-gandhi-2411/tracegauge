@@ -112,5 +112,5 @@ print(result.token_domain_of_validity)  # caveat string, always populated
 
 - **Corpus de-biasing:** `tracegauge export-contribution` (P7) writes a local content-free digest for voluntary contribution. Server-side aggregation, pooled baselines, and legal review are follow-on work.
 - **Smaller judge:** a laptop-runnable quantized model for the trajectory axis (requires a new B3-equivalent corroboration run, not a swap).
-- **Cross-agent support:** adapters for OpenCode, Codex, Aider once tool_result data is available for re-validation.
+- **Cross-agent support:** adapters for OpenCode, Codex, Aider once tool_result data is available for re-validation. A library-only Codex reader ships in 0.18.0; the commands do not use it yet ([ADAPTERS.md](ADAPTERS.md)).
 - **`tracegauge install-hook`:** explicit opt-in SessionEnd hook for zero-latency scoring (modifies `~/.claude/settings.json` only on user request).
