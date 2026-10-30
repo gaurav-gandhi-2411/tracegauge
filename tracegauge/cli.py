@@ -31,7 +31,7 @@ from pathlib import Path
 
 from tracegauge import __version__
 from tracegauge._digest import reconstruct_digest
-from tracegauge._env import deprecation_line, notice_suppressed
+from tracegauge._env import legacy_refusal
 from tracegauge.adapt import adapt_session
 from tracegauge.baselines import BUNDLED_BASELINES_PATH, load_baselines
 from tracegauge.cost import SessionCost, compute_session_cost, load_price_table
@@ -1520,9 +1520,11 @@ def main() -> None:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
 
-    # Deprecated TES_* variables still work; say so once, on stderr, before anything else.
-    if (env_line := deprecation_line()) is not None:
-        print(env_line, file=sys.stderr)
+    # The TES_* names were removed in 0.18. One set without its TRACEGAUGE_* twin is refused, not
+    # ignored: ignoring TES_DB_PATH would silently switch a test run to the real store.
+    if (refusal := legacy_refusal()) is not None:
+        print(refusal, file=sys.stderr)
+        sys.exit(1)
 
     parser = argparse.ArgumentParser(
         prog="tracegauge",
@@ -2521,20 +2523,3 @@ def main() -> None:
             file=sys.stderr,
         )
         sys.exit(EXIT_ADAPT_ERROR)
-
-
-# The old command name. Printed to stderr (never stdout, so --json and pipes are untouched), once per
-# process, before anything else, and not again per subcommand. Removed together with the name in 0.18.
-TES_DEPRECATION_NOTICE = (
-    "tes is deprecated; use tracegauge (or tgauge). It will be removed in 0.18."
-)
-
-
-def tes_main() -> None:
-    """Entry point of the deprecated ``tes`` command: print the one-line notice, then run ``main``.
-
-    Set TRACEGAUGE_NO_DEPRECATION_NOTICE=1 (or true/yes) to silence the notice.
-    """
-    if not notice_suppressed():
-        print(TES_DEPRECATION_NOTICE, file=sys.stderr)
-    main()

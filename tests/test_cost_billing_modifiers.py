@@ -131,6 +131,10 @@ def test_web_fetch_is_free_and_code_execution_is_still_warned() -> None:
     )
     assert "code_execution_requests" in mixed.server_tool_warning
     assert "web_search_requests" not in mixed.server_tool_warning
+    # The explanation must not cite web search as an unpriced example once it is priced
+    # (it did until 0.18.0: "e.g. web search is $10/1,000 searches").
+    assert "web search" not in mixed.server_tool_warning
+    assert "container time" in mixed.server_tool_warning
     assert mixed.total_usd == pytest.approx(0.003 + 0.01, rel=1e-9)
 
 

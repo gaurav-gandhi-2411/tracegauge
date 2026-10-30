@@ -90,7 +90,6 @@ def _run_cli(argv: list[str], home: Path) -> str:
             "USERPROFILE": str(home),
             "TRACEGAUGE_DB_PATH": str(home / "demo.db"),
             "TRACEGAUGE_NO_NOTICE": "1",
-            "TRACEGAUGE_NO_DEPRECATION_NOTICE": "1",
         }
     )
     sys.argv = ["tracegauge", *argv]

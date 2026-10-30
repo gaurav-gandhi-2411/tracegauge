@@ -21,6 +21,36 @@ still installs, with pip's yanked-release warning. Checked against the real inde
 
 ## [Unreleased]
 
+## [0.18.0] - UNRELEASED — the tes names are removed; an experimental Codex CLI reader
+
+- **Removed (breaking, as announced in 0.16.0):** the deprecated `tes` names. The `tes` command, `import tes` /
+  `from tes.x import y`, `python -m tes` and the `TES_*` environment variables are gone; use `tracegauge` (or
+  `tgauge`), `import tracegauge`, `python -m tracegauge` and `TRACEGAUGE_*`. `TRACEGAUGE_NO_DEPRECATION_NOTICE` no
+  longer does anything (there is no notice left to silence); setting it is harmless.
+- **A `TES_*` variable set without its `TRACEGAUGE_*` twin now stops the command** (every invocation, `--version` and `--help` included) with exit code 1 and one stderr
+  line naming the variable and its new name. It is refused rather than ignored because ignoring it can change what
+  a command does without a sign: a script that isolates its store with `TES_DB_PATH=/tmp/x.db` would otherwise
+  read and write the real `~/.tes/tes.db`. When both spellings are set, `TRACEGAUGE_*` is used and nothing is
+  refused. The library (`import tracegauge`) reads `TRACEGAUGE_*` only and never refuses. Tests:
+  `tests/test_env.py`, `tests/test_cli_names.py`.
+- **Unchanged:** the store directory stays `~/.tes/` (`%USERPROFILE%\.tes\` on Windows), with the same files; nothing
+  is moved. Scores, JSON field names and exit codes are unchanged. Migration: `docs/MIGRATING_FROM_TES.md`.
+- **Added (experimental, library only):** `tracegauge.codex_adapt.adapt_codex_session(path)` reads one Codex CLI
+  rollout file (`~/.codex/sessions/.../rollout-*.jsonl`) into the same record the Claude Code adapter produces,
+  so `tracegauge.cost.compute_session_cost` can run on it. It counts each model call's usage once (from the
+  `token_count` events; the per-response `token_usage_record` items repeat the same usage and are ignored), takes
+  the model per turn from `turn_context`, refuses compressed `*.jsonl.zst` files, and reports a session without
+  usage as unpriced rather than $0. **Not wired into the commands:** `tracegauge score` and discovery still read
+  Claude Code only. **Checked against** four real rollouts from Codex CLI 0.162.1 and 0.165.0 on a local model
+  (its input, cache-read, output and total tokens equal Codex's own final totals on all four) and on synthetic
+  files. **UNVERIFIED:** cache-write tokens, reasoning tokens and any OpenAI-hosted model, because checking them
+  needs a paid hosted model; the bundled price table has no OpenAI models, so a real Codex session is reported
+  as unpriced. Details: `docs/ADAPTERS.md`, "Codex CLI". Tests: `tests/test_codex_adapter.py`.
+- **Changed:** the warning for server-side tool usage that cannot be priced no longer gives web search as its
+  example (web search has been priced since 0.15.0); it now names code execution, which is billed by container
+  time that a transcript does not record. Only the sentence changed; when the warning appears is unchanged.
+  Test: `tests/test_cost_billing_modifiers.py`.
+
 ## [0.17.1] - 2026-10-20 — a malformed or null usage field no longer aborts scoring a session
 
 - **Fixed:** `tracegauge score` exited 4 on a Claude Code transcript with `"cache_creation_input_tokens": null` (or another null, boolean or
