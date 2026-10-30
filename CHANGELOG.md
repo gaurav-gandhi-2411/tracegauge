@@ -27,7 +27,7 @@ still installs, with pip's yanked-release warning. Checked against the real inde
   `from tes.x import y`, `python -m tes` and the `TES_*` environment variables are gone; use `tracegauge` (or
   `tgauge`), `import tracegauge`, `python -m tracegauge` and `TRACEGAUGE_*`. `TRACEGAUGE_NO_DEPRECATION_NOTICE` no
   longer does anything (there is no notice left to silence); setting it is harmless.
-- **A `TES_*` variable set without its `TRACEGAUGE_*` twin now stops the command** with exit code 1 and one stderr
+- **A `TES_*` variable set without its `TRACEGAUGE_*` twin now stops the command** (every invocation, `--version` and `--help` included) with exit code 1 and one stderr
   line naming the variable and its new name. It is refused rather than ignored because ignoring it can change what
   a command does without a sign: a script that isolates its store with `TES_DB_PATH=/tmp/x.db` would otherwise
   read and write the real `~/.tes/tes.db`. When both spellings are set, `TRACEGAUGE_*` is used and nothing is

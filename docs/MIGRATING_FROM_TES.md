@@ -72,7 +72,7 @@ Each `TES_*` variable has a `TRACEGAUGE_*` replacement with the same meaning:
 | `TES_CORPUS_WITHDRAW_URL` | `TRACEGAUGE_CORPUS_WITHDRAW_URL` |
 
 **From 0.18** only the `TRACEGAUGE_*` names are read. A `TES_*` variable set (non-empty) without its
-`TRACEGAUGE_*` twin makes the command stop with exit code 1 and one stderr line:
+`TRACEGAUGE_*` twin makes every `tracegauge` invocation, `--version` and `--help` included, stop with exit code 1 and one stderr line:
 
 ```
 [ERROR] TES_DB_PATH is no longer read (the TES_ names were removed in 0.18). Rename: TES_DB_PATH -> TRACEGAUGE_DB_PATH. tracegauge stops here rather than silently ignore it (for example, use a different database). See docs/MIGRATING_FROM_TES.md.
