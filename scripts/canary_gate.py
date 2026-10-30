@@ -23,6 +23,7 @@ GitHub Actions the decision is also appended to the job summary. See docs/HOTFIX
 """
 
 import json
+import math
 import os
 import sys
 from datetime import datetime, timezone
@@ -30,6 +31,8 @@ from pathlib import Path
 from typing import Any
 
 SIGNAL = ("success", "failure")
+# GitHub's timestamps and the runner clock can disagree by a little; more than this is refused.
+MAX_CLOCK_SKEW_DAYS = 10 / (24 * 60)
 
 
 def _age_days(run: dict[str, Any], now: datetime) -> float:
@@ -54,6 +57,12 @@ def _judge(
             f"({latest.get('url', '')}); a manual green re-run does not clear it -- fix the cause "
             "and wait for the next scheduled run"
         )
+    if age < -MAX_CLOCK_SKEW_DAYS:
+        # A run dated in the future is not evidence of anything: refuse rather than pass.
+        return False, (
+            f"the latest {kind} pypi-canary run on master is dated {-age:.2f} days in the future "
+            f"({latest.get('url', '')}); refusing"
+        )
     if age > max_age:
         return False, (
             f"the latest {kind} pypi-canary run on master is {age:.1f} days old "
@@ -72,6 +81,9 @@ def decide(
     now: datetime | None = None,
 ) -> tuple[bool, str]:
     """(passes, message). The bootstrap exception applies only while ``scheduled`` is empty."""
+    if not (math.isfinite(max_age) and max_age > 0):
+        # nan would make every `age > max_age` False, i.e. pass any age: fail closed instead.
+        return False, f"invalid canary age limit {max_age!r}; it must be a positive number of days"
     now = now or datetime.now(timezone.utc)
     if scheduled:
         return _judge(scheduled, "scheduled", max_age, now)

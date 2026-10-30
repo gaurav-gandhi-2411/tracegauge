@@ -121,3 +121,16 @@ def test_release_workflow_lists_both_events_without_a_status_filter_and_runs_the
     assert "--status" not in job
     assert "scripts/canary_gate.py" in job
     assert "actions: read" in job
+
+
+def test_a_run_dated_in_the_future_is_refused_beyond_a_small_clock_skew() -> None:
+    assert cg.decide([_run(-0.05)], [], now=NOW)[0]  # 3 minutes ahead: tolerated skew
+    ok, msg = cg.decide([_run(-24 * 25)], [], now=NOW)
+    assert not ok
+    assert "future" in msg
+
+
+@pytest.mark.parametrize("limit", [float("nan"), float("inf"), 0.0, -1.0])
+def test_a_non_finite_or_non_positive_age_limit_fails_closed(limit: float) -> None:
+    ok, _ = cg.decide([_run(24 * 2000)], [], max_age=limit, now=NOW)
+    assert not ok
