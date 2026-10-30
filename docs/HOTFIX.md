@@ -73,11 +73,12 @@ shows `PyPI Canary` as active) and wait for one scheduled canary run before tagg
 harmless: nothing is uploaded, and the same run can be re-run on the same tag once the canary is green
 (`gh run rerun <run-id>`). Do not re-tag and do not move the tag.
 
-**Proposal (not applied):** for a release that cannot wait up to a day, the gate could accept a
-`workflow_dispatch` canary run **only when no scheduled run exists yet** (the bootstrap case), and print that
-it did so in the job summary. That keeps the protection the gate exists for (a manual run never overrides a
-red or stale scheduled run) and removes the deadlock on a new repository. It is a change to the release
-workflow and needs the maintainer's review.
+**Bootstrap exception:** while **no scheduled canary run exists at all**, the gate judges the latest
+`workflow_dispatch` canary run on `master` instead, by the same rule (green, at most 3 days old), and the job
+summary says "BOOTSTRAP EXCEPTION USED". So on a new repository, run the canary by hand
+(`gh workflow run pypi-canary.yml --ref master`), wait for it to pass, then tag. Once any scheduled run
+exists, in any state, only scheduled runs count again: a manual run never overrides a red or stale scheduled
+run. The rule is in `scripts/canary_gate.py`, with tests in `tests/test_canary_gate.py`.
 
 ## Yanking a release
 
