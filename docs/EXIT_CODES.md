@@ -1,13 +1,13 @@
 # Exit codes
 
-Every `tracegauge` command (and its aliases `tgauge` and the deprecated `tes`) exits with one of these codes. They are a contract for scripts,
+Every `tracegauge` command (and its alias `tgauge`) exits with one of these codes. They are a contract for scripts,
 Claude Code hooks and CI: new codes may be added, existing ones are never renumbered. The same
 table is in each command's `--help` epilog. The constants live in `tracegauge/exit_codes.py`.
 
 | Code | Meaning | Commands |
 |---:|---|---|
 | 0 | OK. Includes "scored, nothing notable", "no alarm", and `monitor` with no active session. | all |
-| 1 | Bad usage or nothing to do: path not found, no `.jsonl` files / no sessions found, `score --judge --no-judge` (checked by our own code), a bad `--since` value, `cost --roi --plan-config PATH` where PATH does not exist (the default location may be absent; a path you name may not), or the store (`tes.db`) cannot be opened. | all |
+| 1 | Bad usage or nothing to do: path not found, no `.jsonl` files / no sessions found, `score --judge --no-judge` (checked by our own code), a bad `--since` value, `cost --roi --plan-config PATH` where PATH does not exist (the default location may be absent; a path you name may not), the store (`tes.db`) cannot be opened, or a removed `TES_*` variable is set without its `TRACEGAUGE_*` twin (see [MIGRATING_FROM_TES.md](MIGRATING_FROM_TES.md)). | all |
 | 2 | Command-line usage error reported by argparse: unknown flag, missing argument or value, a missing required choice (`cost` with none of `--week`/`--month`/`--since`), or flags argparse itself declares mutually exclusive (`cost --week --since ...`). We never use 2 ourselves. | all |
 | 3 | The `monitor` alarm fired for the active session. | `monitor` |
 | 4 | At least one session could not be read or parsed (for example a file that is not valid UTF-8). For `rescore` and `backfill-waste`: at least one row's transcript yielded no usage or could not be priced (the others were still processed; that row is left as it was). | `score`, `rescore`, `backfill-waste` |

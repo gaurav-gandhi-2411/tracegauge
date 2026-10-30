@@ -53,7 +53,7 @@ class ROIResult:
 
 
 def resolve_plan_config_path(explicit_path: str | Path | None = None) -> Path:
-    """explicit arg -> TRACEGAUGE_PLAN_PATH (or deprecated TES_PLAN_PATH) -> ~/.tes/plan.json.
+    """explicit arg -> TRACEGAUGE_PLAN_PATH -> ~/.tes/plan.json.
 
     Mirrors tracegauge.store.resolve_db_path's own resolution order, and
     tracegauge.cost's TRACEGAUGE_PRICE_TABLE / ~/.tes/prices.json precedent -- JSON, not

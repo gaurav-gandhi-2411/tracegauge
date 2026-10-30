@@ -35,9 +35,8 @@ def _isolate_ambient_store(tmp_path_factory: pytest.TempPathFactory) -> Iterator
         return
     home = tmp_path_factory.mktemp("isolated_home")
     with pytest.MonkeyPatch.context() as mp:
-        # The deprecated TES_* spellings are cleared too: an ambient one (e.g. a guard script's
-        # TES_DB_PATH) would otherwise trigger the CLI's stderr deprecation line in every test
-        # that asserts on stderr.
+        # The removed TES_* spellings are cleared too: an ambient one (e.g. a guard script's
+        # TES_DB_PATH) would otherwise make every CLI test refuse to run (exit 1).
         for name in SETTINGS:
             mp.delenv(LEGACY_PREFIX + name, raising=False)
         mp.setenv("TRACEGAUGE_DB_PATH", str(home / "tes.db"))

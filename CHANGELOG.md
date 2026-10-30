@@ -21,6 +21,19 @@ still installs, with pip's yanked-release warning. Checked against the real inde
 
 ## [Unreleased]
 
+- **Removed (breaking, as announced in 0.16.0):** the deprecated `tes` names. The `tes` command, `import tes` /
+  `from tes.x import y`, `python -m tes` and the `TES_*` environment variables are gone; use `tracegauge` (or
+  `tgauge`), `import tracegauge`, `python -m tracegauge` and `TRACEGAUGE_*`. `TRACEGAUGE_NO_DEPRECATION_NOTICE` no
+  longer does anything (there is no notice left to silence); setting it is harmless.
+- **A `TES_*` variable set without its `TRACEGAUGE_*` twin now stops the command** with exit code 1 and one stderr
+  line naming the variable and its new name. It is refused rather than ignored because ignoring it can change what
+  a command does without a sign: a script that isolates its store with `TES_DB_PATH=/tmp/x.db` would otherwise
+  read and write the real `~/.tes/tes.db`. When both spellings are set, `TRACEGAUGE_*` is used and nothing is
+  refused. The library (`import tracegauge`) reads `TRACEGAUGE_*` only and never refuses. Tests:
+  `tests/test_env.py`, `tests/test_cli_names.py`.
+- **Unchanged:** the store directory stays `~/.tes/` (`%USERPROFILE%\.tes\` on Windows), with the same files; nothing
+  is moved. Scores, JSON field names and exit codes are unchanged. Migration: `docs/MIGRATING_FROM_TES.md`.
+
 ## [0.17.1] - 2026-10-20 — a malformed or null usage field no longer aborts scoring a session
 
 - **Fixed:** `tracegauge score` exited 4 on a Claude Code transcript with `"cache_creation_input_tokens": null` (or another null, boolean or

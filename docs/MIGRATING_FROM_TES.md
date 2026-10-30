@@ -2,15 +2,27 @@
 
 The tool has one name now: **tracegauge**. Before 0.16 the PyPI distribution was already called
 `tracegauge`, but the import package, the command and the environment variables were `tes`. The old
-names keep working for two minor versions and are removed in 0.18.
+names kept working, with a deprecation notice, in 0.16 and 0.17, and **were removed in 0.18**.
 
-| | Before | Now | Old name works until |
+| | Before | Now | Old name |
 |---|---|---|---|
-| Python import | `import tes` | `import tracegauge` | 0.17 (removed in 0.18) |
-| Command | `tes score` | `tracegauge score` (short alias: `tgauge score`) | 0.17 (removed in 0.18) |
-| Module run | `python -m tes` | `python -m tracegauge` | 0.17 (removed in 0.18) |
-| Environment variables | `TES_DB_PATH`, ... | `TRACEGAUGE_DB_PATH`, ... | 0.17 (removed in 0.18) |
+| Python import | `import tes` | `import tracegauge` | removed in 0.18 (`ModuleNotFoundError`) |
+| Command | `tes score` | `tracegauge score` (short alias: `tgauge score`) | removed in 0.18 (not installed) |
+| Module run | `python -m tes` | `python -m tracegauge` | removed in 0.18 (`No module named tes`) |
+| Environment variables | `TES_DB_PATH`, ... | `TRACEGAUGE_DB_PATH`, ... | removed in 0.18; one set alone stops the command (see below) |
 | Store directory | `~/.tes/` | `~/.tes/` (unchanged, see below) | not removed |
+
+## What to change when you upgrade to 0.18
+
+1. Replace `tes` with `tracegauge` (or `tgauge`) in scripts, shell aliases and CI jobs.
+2. Replace `import tes` / `from tes...` with `import tracegauge` / `from tracegauge...`.
+3. Rename every `TES_*` variable to its `TRACEGAUGE_*` twin (table below). To find them:
+   `env | grep '^TES_'` (PowerShell: `Get-ChildItem env:TES_*`).
+4. Remove `TRACEGAUGE_NO_DEPRECATION_NOTICE` if you set it; it no longer does anything (setting it is harmless).
+
+Nothing else changes: the store stays where it is, and scores, JSON field names and exit codes are the same.
+
+The sections below describe how the old names behaved in 0.16 and 0.17, for anyone still on those versions.
 
 ## Python imports
 
@@ -24,9 +36,9 @@ import tracegauge
 from tracegauge.adapt import adapt_session
 ```
 
-`import tes` still works and emits one `DeprecationWarning` per process ("tes is deprecated, import
-tracegauge; removed in 0.18."), pointing at the line that imported it. It is an alias, not a copy:
-`tes.cost is tracegauge.cost`, so monkeypatching and `isinstance` checks behave the same through
+In 0.16 and 0.17, `import tes` worked and emitted one `DeprecationWarning` per process ("tes is deprecated, import
+tracegauge; removed in 0.18."), pointing at the line that imported it. It was an alias, not a copy:
+`tes.cost is tracegauge.cost`, so monkeypatching and `isinstance` checks behaved the same through
 either name. Python hides `DeprecationWarning` outside `__main__` by default; run with
 `python -W error::DeprecationWarning` (or `-W default`) to find every import that still says `tes`.
 `import tracegauge` never warns.
@@ -34,8 +46,8 @@ either name. Python hides `DeprecationWarning` outside `__main__` by default; ru
 ## Command line
 
 `tracegauge` is the command and `tgauge` is a short alias for it; both behave identically and
-`--version` prints `tracegauge <version>`. The `tes` command still runs but prints one line to
-**stderr** first:
+`--version` prints `tracegauge <version>`. In 0.16 and 0.17 the `tes` command ran but printed one
+line to **stderr** first:
 
 ```
 tes is deprecated; use tracegauge (or tgauge). It will be removed in 0.18.
@@ -59,7 +71,19 @@ Each `TES_*` variable has a `TRACEGAUGE_*` replacement with the same meaning:
 | `TES_CORPUS_ANON_KEY` | `TRACEGAUGE_CORPUS_ANON_KEY` |
 | `TES_CORPUS_WITHDRAW_URL` | `TRACEGAUGE_CORPUS_WITHDRAW_URL` |
 
-Rules, so a half-migrated setup does what you expect:
+**From 0.18** only the `TRACEGAUGE_*` names are read. A `TES_*` variable set (non-empty) without its
+`TRACEGAUGE_*` twin makes the command stop with exit code 1 and one stderr line:
+
+```
+[ERROR] TES_DB_PATH is no longer read (the TES_ names were removed in 0.18). Rename: TES_DB_PATH -> TRACEGAUGE_DB_PATH. tracegauge stops here rather than silently ignore it (for example, use a different database). See docs/MIGRATING_FROM_TES.md.
+```
+
+It stops instead of ignoring the variable because ignoring it would change what the command does
+without any sign: a script that isolates its store with `TES_DB_PATH=/tmp/x.db` would read and
+write the real `~/.tes/tes.db` instead. When both spellings are set, `TRACEGAUGE_*` is used and the
+command runs. The library (`import tracegauge`) reads `TRACEGAUGE_*` only and never stops.
+
+In 0.16 and 0.17, these rules applied so that a half-migrated setup did what you expect:
 
 - If both are set, `TRACEGAUGE_*` wins.
 - An empty value counts as unset, in both spellings. An empty `TRACEGAUGE_DB_PATH` therefore falls
@@ -68,8 +92,8 @@ Rules, so a half-migrated setup does what you expect:
   line naming it ("`TES_DB_PATH` is deprecated; use `TRACEGAUGE_DB_PATH`. ..."). The same
   `TRACEGAUGE_NO_DEPRECATION_NOTICE=1` silences it. Library calls never print.
 
-Scripts that isolate the store for a test run (`TES_DB_PATH=/tmp/x.db`) keep working unchanged;
-export both spellings while you support old and new versions side by side.
+To support 0.17 and 0.18 side by side, export both spellings with the same value
+(`TES_DB_PATH=/tmp/x.db TRACEGAUGE_DB_PATH=/tmp/x.db`): 0.17 prefers the new one and 0.18 runs.
 
 ## Where your data lives: `~/.tes/` does not move
 
