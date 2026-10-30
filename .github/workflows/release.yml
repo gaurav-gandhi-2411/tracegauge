@@ -12,7 +12,8 @@ name: Release
 #                       same sha256 (scripts/build_dist.py, RELEASING.md)
 #   verify-artifact     the dist/ each build uploaded (artifact dist-a, dist-b) matches the
 #                       checked SHA256SUMS byte for byte (scripts/verify_dist.py)
-#   gate-canary         the latest SCHEDULED pypi-canary run on master is green and recent
+#   gate-canary         the latest SCHEDULED pypi-canary run on master is green and recent (a manual
+#                       run counts only while no scheduled run exists yet; scripts/canary_gate.py)
 #
 # The publish job does NOT rebuild: it downloads build a's dist-a artifact, re-verifies it against
 # the same SHA256SUMS with the same script, and uploads exactly those files.
@@ -177,41 +178,33 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       actions: read
+      contents: read # checkout of scripts/canary_gate.py
     steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.ref }}
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
       - name: The latest SCHEDULED canary run on master must be recent and green
         # Only `schedule` runs on `master` count: a manual dispatch can turn the latest run green
         # without anything being fixed. Cancelled/skipped runs carry no signal. The canary is daily
         # and GitHub starts scheduled runs late and sometimes drops one, so the window is 3 days.
         # No qualifying run inside the window is a refusal, not a pass.
+        # Bootstrap exception (docs/HOTFIX.md): while NO scheduled run exists at all (a new
+        # repository), the latest manual run on master is judged by the same rule instead, and the
+        # job summary says so. Any scheduled run, in any state, ends the exception.
         env:
           GH_TOKEN: ${{ github.token }}
-          CANARY_EVENT: schedule
-          CANARY_BRANCH: master
           CANARY_MAX_AGE_DAYS: "3"
         run: |
           set -euo pipefail
-          runs=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow pypi-canary.yml --event "$CANARY_EVENT" --branch "$CANARY_BRANCH" --status completed --limit 20 --json conclusion,createdAt,url,event,headBranch)
-          RUNS="$runs" python3 - <<'PY'
-          import json, os, sys
-          from datetime import datetime, timezone
-
-          event, branch = os.environ["CANARY_EVENT"], os.environ["CANARY_BRANCH"]
-          max_age = float(os.environ["CANARY_MAX_AGE_DAYS"])
-          runs = [r for r in json.loads(os.environ["RUNS"]) if r["conclusion"] in ("success", "failure")]
-          if not runs:
-              print(f"::error::no completed pypi-canary run with event={event} on branch {branch}; it cannot vouch for this release")
-              sys.exit(1)
-          latest = max(runs, key=lambda r: r["createdAt"])
-          age = (datetime.now(timezone.utc) - datetime.fromisoformat(latest["createdAt"].replace("Z", "+00:00"))).total_seconds() / 86400
-          print(f"latest qualifying canary run: {latest} (age {age:.2f} days, limit {max_age:g})")
-          if latest["conclusion"] != "success":
-              print(f"::error::the latest {event} pypi-canary run on {branch} is '{latest['conclusion']}' ({latest['url']}); a manual green re-run does not clear it -- fix the cause and wait for the next scheduled run")
-              sys.exit(1)
-          if age > max_age:
-              print(f"::error::the latest {event} pypi-canary run on {branch} is {age:.1f} days old (limit {max_age:g}); a scheduled run was missed")
-              sys.exit(1)
-          print("canary gate: OK")
-          PY
+          fields=status,conclusion,createdAt,url
+          gh run list --repo "$GITHUB_REPOSITORY" --workflow pypi-canary.yml --event schedule --branch master --limit 20 --json "$fields" > "$RUNNER_TEMP/scheduled.json"
+          gh run list --repo "$GITHUB_REPOSITORY" --workflow pypi-canary.yml --event workflow_dispatch --branch master --limit 20 --json "$fields" > "$RUNNER_TEMP/dispatch.json"
+          python scripts/canary_gate.py "$RUNNER_TEMP/scheduled.json" "$RUNNER_TEMP/dispatch.json" "$CANARY_MAX_AGE_DAYS"
 
   publish:
     # Only a tag push publishes. A workflow_dispatch run stops after the preflights above.
