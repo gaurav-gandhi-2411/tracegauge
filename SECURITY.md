@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability
 
-Please report a suspected vulnerability privately by email to gaurav.gandhi2411@gmail.com (the maintainer address in `pyproject.toml`), not in a public issue. Include the tracegauge version (`tracegauge --version`), what you did, and what you observed.
+Please report a suspected vulnerability privately by email to gauravgandhi429@gmail.com, not in a public issue. Include the tracegauge version (`tracegauge --version`), what you did, and what you observed.
 
 This is a solo-maintained project: expect an acknowledgement within a few days, not hours.
 
