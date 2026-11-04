@@ -919,7 +919,10 @@ def _run_impact(*, db_path: str | None = None, top_n: int = 10, json_mode: bool 
                 "scored from now on; nothing else to do."
             )
         else:
-            print("\nNo sessions found in this store.")
+            print(
+                "\nNo sessions found in this store. Run `tracegauge score` or "
+                "`tracegauge serve` first."
+            )
         if legacy_line:
             print(f"\n{legacy_line}")
         print(sep)
