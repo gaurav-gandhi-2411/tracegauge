@@ -305,3 +305,19 @@ def test_exit_codes_md_describes_the_two_contradictory_flag_cases() -> None:
     assert "--judge --no-judge" in rows[1]
     assert "contradictory" not in rows[1]  # the old, wrong claim: argparse conflicts are code 2
     assert "mutually exclusive" in rows[2]
+
+
+def test_impact_empty_store_text_names_score_and_serve(
+    hermetic_cli: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """#10: `impact` on an empty store used to print only "No sessions found in
+    this store.", unlike the other two empty-store messages (export-contribution,
+    the corpus-consent prompt) which already name the two commands to run next."""
+    code = _main_code(monkeypatch, ["impact"])
+    out = capsys.readouterr().out
+    assert code == EXIT_OK
+    assert "No sessions found in this store." in out
+    assert "tracegauge score" in out
+    assert "tracegauge serve" in out
