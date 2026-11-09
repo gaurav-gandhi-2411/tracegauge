@@ -66,6 +66,8 @@ Reconstructed by `_reconstruct_digest()` in `layer2_judge.py` before calling the
 | `output_tokens_available` | bool | **required** | Whether output tokens are logged per-turn |
 | `task_description` | string | **required** | First user-role turn content, truncated to 800 chars. Fed directly to judge prompt. |
 | `turns` | list[TurnDigest] | **required** | All turns in order; system turns are included but skipped in rendering |
+| `subagent_turns` | list[TurnDigest] | optional | Subagent usage rolled up into this session: one AI-role `TurnDigest` per (subagent file, model). Deliberately not part of `turns` — waste detection, the judge text and the `real_tokens` verdict stay main-chain; `tracegauge.cost` and `tracegauge.attribution` add these on top. See [Subagent fields](#subagent-fields-tracegauge-0170-tracegauge_digestpy) below for the per-turn `agent_type` field. |
+| `subagent_count` | int | optional | Number of subagent transcripts that contributed usage; the counts in `subagent_files_by_type` below sum to this |
 | `usage_records` | int | optional | Main-chain assistant records that carried a `usage` object (0 on digests stored before adapter_version 2) |
 | `usage_records_deduped` | int | optional | Distinct API responses among them, each counted once; `usage_records - usage_records_deduped` is the number of repeated content-block records (0 on older digests) |
 
@@ -83,6 +85,19 @@ Reconstructed by `_reconstruct_digest()` in `layer2_judge.py` before calling the
 | `token_count_output` | int | **required** | Output tokens generated in this turn (>0 only for AI turns with output_tokens_available=True) |
 | `cache_read` | int | **required** | Cache-read tokens for this turn |
 | `h2_duplicate` | bool | **required** | True if this turn was annotated as an H2 duplicate message |
+| `cache_creation` | int | optional | Cache-write tokens for this turn, a subset of `token_count_input`; used for cost only |
+| `model` | string | optional | Model id string of this turn's response, e.g. `"claude-sonnet-4-6"`; used for cost price lookup |
+| `server_tool_use` | dict[str, int] \| None | optional | Raw `usage.server_tool_use` counts from the API response (e.g. `{"web_search_requests": 2}`), when present and non-empty; `None` when the field was absent on this turn's raw usage. Priced by `tracegauge.cost` |
+| `request_count` | int | optional | API requests this turn stands for: `1` for a real turn, more for an aggregated subagent turn; needed for models billed per request |
+| `cache_creation_1h` | int | optional | Part of `cache_creation` written with the 1-hour cache TTL (billed at 2x the input rate) |
+| `cache_creation_tier_known` | int | optional | How many `cache_creation` tokens the 5-minute/1-hour split accounts for; the remainder is priced at the 5-minute rate as a conservative default |
+| `speed` | string | optional | Per-request billing modifier: `"fast"` or `""` (standard/absent) |
+| `inference_geo` | string | optional | Per-request billing modifier: `"us"` or `""` (global/not_available/absent) |
+
+All eight fields above are additive and defaulted (see `tracegauge/_digest.py`): a digest stored
+before one of them existed deserialises with its default shown, and no existing field or number
+moves. `TurnDigest.agent_type` is the one remaining additive field; it has its own row in
+[Subagent fields](#subagent-fields-tracegauge-0170-tracegauge_digestpy) below.
 
 ### Role values and rendering
 
