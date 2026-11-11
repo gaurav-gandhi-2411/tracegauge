@@ -126,10 +126,20 @@ python scripts/check_price_table_vs_vendor.py        # table vs Anthropic's page
 The first exits 1 and lists any model id found in your transcripts that `tracegauge/data/prices.json`
 cannot resolve (exit 2 = nothing could be scanned; `<synthetic>` is excluded by design). Fix a
 miss by adding the model from the official pricing page, then add its id to
-`tests/fixtures/transcript_models/` so the always-on CI test keeps guarding it. Not modelled by
-design, because a transcript cannot show them: fast mode, `inference_geo` data-residency uplift,
-the Batch discount and server-tool charges. Haiku 5.5's over-100k-prompt tier is exact for main
-turns and reported as a floor for aggregated subagent usage.
+`tests/fixtures/transcript_models/` so the always-on CI test keeps guarding it.
+
+Priced when the transcript records them:
+- fast mode (`usage.speed == "fast"`, on the models with fast rates);
+- US-only inference (`usage.inference_geo == "us"`, 1.1x on Claude 4.6 and later);
+- web search (`server_tool_use.web_search_requests`, $10 per 1,000).
+
+Web fetch has no charge beyond tokens. Not modelled, because a transcript cannot show them:
+- code-execution container time (it gets a warning instead);
+- the refund for web searches that errored (every recorded search is charged).
+
+The Batch discount does not apply to Claude Code transcripts. Haiku 5.5's over-100k-prompt tier is
+exact for main turns and reported as a floor for aggregated subagent usage. Details are in
+[docs/PRICING_FIELDS.md](docs/PRICING_FIELDS.md).
 
 ## The tag-must-match-pyproject gotcha
 
