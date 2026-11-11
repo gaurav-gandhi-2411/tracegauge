@@ -80,12 +80,10 @@ Documentation = "https://github.com/gaurav-gandhi-2411/tracegauge#readme"
 [project.scripts]
 tracegauge = "tracegauge.cli:main"
 tgauge = "tracegauge.cli:main"
-# Deprecated alias, removed in 0.18: same command plus a one-line notice on stderr.
-tes = "tracegauge.cli:tes_main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["tracegauge*", "tes*"]
+include = ["tracegauge*"]
 exclude = ["tests*", "scripts*", "src*"]
 
 [tool.setuptools.package-data]
@@ -96,7 +94,7 @@ line-length = 100
 # py310 = requires-python's floor. It was py311, so ruff's UP017 autofix (#45) rewrote
 # `timezone.utc` to `datetime.UTC` (3.11+) and broke the package on 3.10 from 0.12.3 on.
 target-version = "py310"
-src = ["src", "tracegauge", "tes"]
+src = ["src", "tracegauge"]
 # tracegauge/_waste_detectors.py is a project invariant: byte-frozen
 # (tests/test_prior_features_intact.py::test_waste_detectors_byte_frozen
 # enforces `git diff --exit-code` on it), so it must never be touched by

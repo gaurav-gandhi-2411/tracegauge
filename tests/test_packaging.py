@@ -84,7 +84,7 @@ def test_package_name_is_tracegauge() -> None:
 
 
 def test_console_scripts_resolve() -> None:
-    """tracegauge and tgauge run the CLI; the deprecated tes runs it behind a stderr notice."""
+    """tracegauge and tgauge run the CLI; the tes command was removed in 0.18."""
     from importlib.metadata import entry_points
 
     eps = entry_points(group="console_scripts")
@@ -93,5 +93,4 @@ def test_console_scripts_resolve() -> None:
     assert ep_map == {
         "tracegauge": "tracegauge.cli:main",
         "tgauge": "tracegauge.cli:main",
-        "tes": "tracegauge.cli:tes_main",
     }

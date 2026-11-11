@@ -1,6 +1,6 @@
 # Installing tracegauge
 
-The package is `tracegauge` on PyPI. It installs two equivalent commands, `tracegauge` and the short alias `tgauge` (plus the deprecated `tes`, removed in 0.18).
+The package is `tracegauge` on PyPI. It installs two equivalent commands, `tracegauge` and the short alias `tgauge` (the old `tes` command was removed in 0.18).
 Python 3.10 or newer. Nothing leaves your machine unless you opt in to something that says so.
 
 ## Fastest: run it without installing (uvx)

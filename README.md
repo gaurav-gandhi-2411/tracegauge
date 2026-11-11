@@ -92,7 +92,7 @@ How often does a session have something like this? On one developer's 47 session
 
 ## Commands
 
-`tgauge` is a short alias for `tracegauge`. The old `tes` command still works until 0.18 ([migration guide](https://github.com/gaurav-gandhi-2411/tracegauge/blob/master/docs/MIGRATING_FROM_TES.md)). Full usage and the SDK: [docs/COMMANDS.md](https://github.com/gaurav-gandhi-2411/tracegauge/blob/master/docs/COMMANDS.md).
+`tgauge` is a short alias for `tracegauge`. The old `tes` command, `import tes` and the `TES_*` variables were removed in 0.18 ([migration guide](https://github.com/gaurav-gandhi-2411/tracegauge/blob/master/docs/MIGRATING_FROM_TES.md)). Full usage and the SDK: [docs/COMMANDS.md](https://github.com/gaurav-gandhi-2411/tracegauge/blob/master/docs/COMMANDS.md).
 
 | Command | What it does |
 |---|---|
