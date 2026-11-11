@@ -37,7 +37,10 @@ checked against the source rather than guessed. The format notes are in
 
 1. **Codex CLI.** Sessions are JSON Lines, one file each, and the source documents `token_count` events
    that carry cumulative and per-call token usage, so usage can be read from the file the way the Claude
-   Code adapter reads it. This is the first adapter to follow 0.17.0.
+   Code adapter reads it. A first reader ships in 0.18.0 as an experimental library function, not wired
+   into the commands. Still to do: routing Codex files through the commands, OpenAI prices in the
+   bundled table, and a check against an OpenAI-hosted model (cache writes and reasoning tokens were 0 in
+   every file checked so far).
 2. **OpenCode.** Sessions are in a SQLite database with per-message token counts, which means a different
    reader (a database, plus a legacy JSON layout from older installs) before the same digest can be built.
 3. **Aider.** Sessions are a markdown chat log, and token usage is a line of English in it, not a
@@ -49,7 +52,7 @@ but none is scheduled. If one of them matters to you, an
 [adapter request](https://github.com/gaurav-gandhi-2411/tracegauge/issues/new?template=adapter_request.yml)
 that describes the shape of its files (never their content) is the most useful thing you can send.
 
-Alongside the adapters: the `tes` names are removed in 0.18, as announced in the 0.16.0 entry.
+Alongside the adapters: the `tes` names were removed in 0.18.0, as announced in the 0.16.0 entry.
 
 ## Measured, not shipped: two detector candidates
 

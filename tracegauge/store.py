@@ -105,7 +105,7 @@ _DEFAULT_DB = _DEFAULT_DIR / "tes.db"
 
 
 def resolve_db_path(path: Path | str | None = None) -> Path:
-    """Canonical DB path: explicit arg → TRACEGAUGE_DB_PATH (or deprecated TES_DB_PATH) → ~/.tes/tes.db."""
+    """Canonical DB path: explicit arg → TRACEGAUGE_DB_PATH → ~/.tes/tes.db."""
     if path is not None:
         return Path(path)
     if env_val := env_value("DB_PATH"):
@@ -152,7 +152,7 @@ def _enable_wal(conn: sqlite3.Connection) -> None:
 def open_db(path: Path | str | None = None) -> sqlite3.Connection:
     """Open (or create) the TES database.
 
-    Path resolution: explicit arg → TRACEGAUGE_DB_PATH (or deprecated TES_DB_PATH) → ~/.tes/tes.db.
+    Path resolution: explicit arg → TRACEGAUGE_DB_PATH → ~/.tes/tes.db.
     Raises RuntimeError on PermissionError or schema version mismatch.
     """
     db_path = resolve_db_path(path)

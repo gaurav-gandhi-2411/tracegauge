@@ -342,9 +342,9 @@ def _server_tool_warning(turn: TurnDigest, web_search_priced: bool = False) -> s
         return ""
     return (
         f"turn {turn.turn_index}: server-side tool usage detected ({detail}) but NOT "
-        "priced — tracegauge has no verified billing rate for these wired through cost "
-        "computation yet (e.g. web search is $10/1,000 searches). total_usd for this "
-        "turn excludes this cost; the true cost is higher than shown."
+        "priced — tracegauge has no billing rate it can apply to these (code execution, "
+        "for example, is billed by container time, which a transcript does not record). "
+        "total_usd for this turn excludes this cost; the true cost is higher than shown."
     )
 
 

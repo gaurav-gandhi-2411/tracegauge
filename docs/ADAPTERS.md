@@ -1,6 +1,7 @@
 # Writing an adapter for another coding agent
 
-Only Claude Code is supported today. An adapter reads one agent's session files and produces the
+The commands support Claude Code only. 0.18.0 adds an experimental, library-only reader for Codex CLI
+rollouts (`tracegauge.codex_adapt.adapt_codex_session`, section (c)); the commands do not use it yet. An adapter reads one agent's session files and produces the
 digest that the rest of tracegauge scores. This page says what an adapter has to produce, how the Claude
 Code adapter does it, what is known about six other agents, how to test an adapter without a real
 transcript, and what a pull request for one should contain. The plan and its order are in
@@ -9,8 +10,9 @@ transcript, and what a pull request for one should contain. The plan and its ord
 ## How much of this to trust
 
 The notes on other agents were read from each agent's public source and a few web pages on **2026-10-10**.
-**No agent was run, and no transcript from any of them was read.** Every claim about another agent
-carries one of two tags:
+**No agent was run, and no transcript from any of them was read,** with one later exception: four real
+Codex CLI rollouts were read on 2026-10-29, and what they showed is tagged OBSERVED in the Codex status
+subsection. Every other claim about another agent carries one of two tags:
 
 - **VERIFIED**: read in that agent's own source at the commit pinned below, with the file and line given.
 - **UNVERIFIED**: everything else. That includes claims taken from a third-party parser or a web page,
@@ -163,8 +165,8 @@ Tests to read first: `tests/test_usage_dedupe.py`, `tests/test_subagent_rollup.p
 
 ## (c) Other agents
 
-None of the following is implemented. The first three are the planned order (Codex, OpenCode, Aider); the
-other three have been read but are not scheduled.
+Only Codex CLI has an implementation, and it is library-only (its status subsection says what was checked). The
+first three are the planned order (Codex, OpenCode, Aider); the other three have been read but are not scheduled.
 
 | Agent | Store | Where token usage lives |
 |---|---|---|
@@ -184,12 +186,14 @@ Location and format
   (`codex-rs/rollout/src/recorder.rs:1744-1757`); the file is `rollout-YYYY-MM-DDThh-mm-ss-<uuid>.jsonl`, and a
   reverted thread appends `_<rolloutId>` (`codex-rs/rollout/src/rollout_file_name.rs:44-62`). An
   `archived_sessions` directory also exists (`codex-rs/rollout/src/lib.rs:86-87`).
-- UNVERIFIED: each line is `{timestamp, ordinal?, type, payload}` (`codex-rs/history/src/lib.rs:365-371`).
+- Each line is `{timestamp, ordinal?, type, payload}` (`codex-rs/history/src/lib.rs:365-371`; OBSERVED in
+  real files, see the status subsection).
   The `type` values are `session_meta`, `response_item`, `inter_agent_communication`, `compacted`,
   `turn_context`, `token_usage_record`, `world_state`, `retained_context`, `security_risk_score`,
   `event_msg` and `realtime_item` (`codex-rs/history/src/rollout_payload.rs:33-76`).
-- UNVERIFIED: `session_meta` carries `cli_version`, `model_provider`, `cwd`, `originator` and
-  `forked_from_id` (`codex-rs/protocol/src/protocol.rs:3243-3290`). There is no schema-version field, so
+- `session_meta` carries `cli_version`, `model_provider`, `cwd`, `originator` and `forked_from_id`
+  (`codex-rs/protocol/src/protocol.rs:3243-3290`). The first four are OBSERVED in real files.
+  `forked_from_id` is still UNVERIFIED: it was absent from the unforked files. There is no schema-version field, so
   `cli_version` is the only version marker.
 - VERIFIED: there are two history modes, `Legacy` (the default) and `Paginated`
   (`codex-rs/protocol/src/protocol.rs:878-884`). Under `Paginated` the legacy `event_msg` message types are
@@ -219,8 +223,8 @@ Token usage
   `thread_token_usage` (`protocol.rs:~2379-2392`, persisted at `policy.rs:44`).
 - VERIFIED: the model id is in `turn_context.model` (`protocol.rs:3415+`), not in `token_count`; attribute
   usage to a model by tracking the latest `turn_context`.
-- Not established by the notes: whether `input_tokens` already includes `cached_input_tokens`. Settle it
-  with a real file before mapping to the digest (invariant 6).
+- Settled from source in the status subsection below: `input_tokens` includes `cached_input_tokens`
+  (invariant 6). Still worth confirming against a real file.
 
 Pitfalls
 - Both a cumulative total and a per-call value exist: use one consistently and never add them.
@@ -234,6 +238,112 @@ Pitfalls
 - `Paginated` history changes which event types exist (VERIFIED above).
 - `.jsonl.zst` files can exist when compression is enabled (VERIFIED above), so a reader that must see
   compressed files has to handle them.
+
+Status: experimental library adapter, shipped in 0.18.0
+
+`tracegauge/codex_adapt.py` has `adapt_codex_session(path)`, which returns the layer-1 record for a
+Codex rollout. It is **not** wired into the CLI or discovery (routing needs an agreed design, see
+section (a)). It has been run on hand-written synthetic files and on four real rollouts (next list).
+
+UNVERIFIED, because checking them needs a paid OpenAI-hosted model and every real file so far came from a
+local model:
+- cache-write tokens (`cache_write_input_tokens`), including whether `input_tokens` contains them (the
+  adapter assumes it does; see "Settled from source" below);
+- reasoning tokens (`reasoning_output_tokens`), including whether `output_tokens` contains them;
+- any session from an OpenAI-hosted model: its model ids, its usage fields and its prices (the bundled
+  price table has no OpenAI models, so every real Codex session is reported as unpriced).
+
+Checked against real rollouts (2026-10-29). Codex CLI 0.165.0 and 0.162.1 (`@openai/codex` from npm),
+`codex exec` on a synthetic task with a local model (`qwen3:8b` via Ollama), in a throwaway environment.
+Scenarios: one turn; one turn plus two `codex exec resume --last` follow-ups; one turn with `--ephemeral`.
+Two of the files, shortened, are test fixtures (`tests/fixtures/codex/real_*.jsonl`). OBSERVED below means
+seen in those files.
+- OBSERVED: every line is `{timestamp, ordinal, type, payload}`; some lines also have `metadata`.
+  `ordinal` was present on every line and ran 0..n-1.
+  `session_meta` carries `cli_version`, `model_provider`, `cwd`, `originator` (`codex_exec`), `source`,
+  `history_mode` and `id`. `forked_from_id` was absent; none of these sessions was forked.
+- OBSERVED: `codex exec` wrote `history_mode: "paginated"` in both versions. Under it, `response_item`
+  messages, reasoning, `function_call` and `function_call_output` items are still in the rollout, and so
+  are `token_count` events. The legacy `user_message` / `agent_message` events are absent;
+  `item_completed`, `thread_settings_applied` and `world_state` lines appear instead. Besides
+  `session_meta` (fork marker) and `turn_context` (model), the adapter reads only the `response_item` and
+  `token_count` lines, so it handles these files.
+- OBSERVED: within one model call the order is call, (reasoning), `token_usage_record`, call output, then
+  `token_count`. A final assistant message comes before its `token_count`.
+  - Adapter version 2 charges a `token_count` that follows a call output to the ai turn holding the latest
+    such call.
+  - Version 1 charged it to a new, empty ai turn: 11 ai turns for 7 model calls.
+  - Session totals are the same in both versions.
+- OBSERVED: every `token_count` total grew by exactly its `last_token_usage`: no repeated or falling totals
+  in 27 events. `total_tokens == input_tokens + output_tokens`, so cached input is inside `input_tokens`
+  (invariant 6). Each `token_usage_record.usage` equals the `last_token_usage` of the next `token_count`,
+  and they sum to the final cumulative total. Ignoring `token_usage_record` is therefore what avoids
+  double counting.
+- OBSERVED: on all four files, the adapter's input, cache-read, output and total equal Codex's final
+  `total_token_usage`.
+- OBSERVED: `resume --last` appends to the same rollout file, with a new `turn_context` per turn.
+  `--ephemeral` wrote no rollout in either version.
+- OBSERVED: `<environment_context>` is injected as a user message before the task, and the adapter skips
+  it. Instructions (`<skills_instructions>`, `<permissions instructions>`) arrive as `developer` messages,
+  which the adapter does not read as user turns.
+- Not covered by these files: cache writes and reasoning tokens (both 0 with Ollama), an OpenAI-hosted
+  model, forks, compaction, `AGENTS.md` / `<user_instructions>`, and Legacy-mode files.
+
+Settled from source at `2f761ae` (VERIFIED unless a bullet says INFERRED):
+- A rollout line is `{"timestamp": str, "ordinal"?: int, "type": <snake_case variant>, "payload": {...}}`:
+  the envelope is `RolloutLine` (`codex-rs/history/src/lib.rs:365-371`, `item` flattened) and the
+  `type`/`payload` pair is the adjacently-tagged `RolloutItemWire`
+  (`codex-rs/history/src/rollout_payload.rs:32-76`).
+- A usage event is a line with `type: "event_msg"` and `payload`
+  `{"type": "token_count", "info": {"total_token_usage": T, "last_token_usage": T,
+  "model_context_window": int|null} | null, "rate_limits": {...}|null}` (`protocol.rs:1459-1462`,
+  `:1526`, `:2396-2400`, `:2463-2466`), where `T` is `TokenUsage` (`protocol.rs:2361-2376`). `info`
+  may be `null`; the adapter skips such an event.
+- `input_tokens` INCLUDES `cached_input_tokens` (invariant 6): non-cached input is
+  `input_tokens - cached_input_tokens` (`protocol.rs:2550-2552`).
+- INFERRED, not verified: `input_tokens` also includes `cache_write_input_tokens`. The only evidence is
+  that the Responses-API parser reads both out of `input_tokens_details`
+  (`codex-rs/codex-api/src/sse/responses.rs:130-134`) and a serde parse test uses input 100, cached 40,
+  written 60, total 110 (`responses.rs:846-867`); those are numbers chosen for the test, and
+  `non_cached_input` subtracts only the cached part. The adapter subtracts the write as well. If the
+  write is actually additive, fresh input is understated by the written tokens and cost is understated
+  with it. Confirm against a real file.
+- A malformed record with `input_tokens` below cached + write gets a billed input of cached + write
+  (fresh 0), so the turn is internally consistent and no cached token is dropped. Huge counts are not
+  capped.
+- `output_tokens` already includes `reasoning_output_tokens`: the same test has output 10, reasoning 5,
+  total 110, and the CLI prints reasoning as a parenthesised part of output (`protocol.rs:2622-2631`).
+  The adapter does not add it again.
+- The model id is `turn_context.model`, a required string (`protocol.rs:3416`, `:3438`); the adapter
+  uses the latest one seen before a `token_count`.
+- `*.jsonl.zst` is refused with `CodexCompressedSessionError` (no zstd dependency).
+
+Still UNVERIFIED or not done:
+- Item order is settled for 0.162.1 and 0.165.0 (above), but not for other builds or for Legacy mode.
+- `token_usage_record` items (per response, with `response_id`) are ignored, so a response is not
+  counted twice next to its `token_count`. If a build writes only those, usage is read as missing.
+- Forked sessions: a `session_meta.forked_from_id` only adds a caveat and a warning; replayed parent
+  usage is not recognised or removed.
+- Cache writes carry no lifetime, so `cache_creation_tier_known` is 0. The bundled price table also has
+  no OpenAI models, so every real Codex session prices as unpriced until entries are added.
+- A session with no `token_count` gets `usage_available: false`, a caveat and `models_seen`, and its ai
+  turns have `model` blanked to `""`. `tracegauge.cost` cannot resolve an empty model, so it reports the
+  session as approximate ("empty model string") instead of a confident $0; cost.py itself is unchanged.
+- Dedupe: within one counter the cumulative total only grows (`append_last_usage`, `protocol.rs:2431`),
+  so an event whose total equals that of the last counted event is ignored. A total BELOW it is treated
+  as a counter reset (restart, compaction): the event's `last_token_usage` is counted, the baseline moves
+  down, `usage_dedupe.decreasing_total_events` is incremented, a warning is printed and a caveat says
+  usage may be over-counted if the drop was a replay (so an A, B, A replay is over-counted, flagged).
+  Ignoring it instead would silently drop all later usage. If `total_tokens` is missing or not a number,
+  the event is compared on (total, input, output) with the previous event only, with a warning.
+- Not done:
+  - `edit_operations` (apply_patch) are not extracted.
+  - `item_completed` lines are not read. In the files above they hold typed items (`UserMessage`,
+    `AgentMessage`, `Reasoning`, `CommandExecution`) for the same turns. UNVERIFIED: whether they ever
+    hold something the `response_item` lines do not.
+  - Cache-churn and subagent roll-up do not exist for Codex.
+- Of the injected-context prefixes, `<environment_context>` is OBSERVED; `<user_instructions>` and
+  `# AGENTS.md` are still UNVERIFIED.
 
 ### Gemini CLI (`google-gemini/gemini-cli` @ `fa2531d`)
 
